@@ -1,7 +1,7 @@
 {
-    "name": "Voice Task - Voice Only Todo App",
-    "short_name": "Voice Task",
-    "description": "A beautiful voice-only task management PWA",
+    "name": "Done",
+    "short_name": "Done",
+    "description": "A beautiful voice-first personal task manager",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#000000",
@@ -10,12 +10,12 @@
     "scope": "/",
     "icons": [
         {
-            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000000'/><text y='.9em' font-size='90' text-anchor='middle' x='50'>🎤</text></svg>",
+            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000000'/><circle cx='50' cy='50' r='40' stroke='white' stroke-width='4' fill='none'/><path d='M35 50l10 10 20-20' stroke='white' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>",
             "sizes": "192x192",
             "type": "image/svg+xml"
         },
         {
-            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000000'/><text y='.9em' font-size='90' text-anchor='middle' x='50'>🎤</text></svg>",
+            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23000000'/><circle cx='50' cy='50' r='40' stroke='white' stroke-width='4' fill='none'/><path d='M35 50l10 10 20-20' stroke='white' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>",
             "sizes": "512x512",
             "type": "image/svg+xml"
         }
