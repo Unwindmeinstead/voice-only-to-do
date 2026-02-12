@@ -3,10 +3,13 @@ class VoiceTaskApp {
         this.tasks = this.loadTasks();
         this.isRecording = false;
         this.recognition = null;
+        this.playBeep = null;
         
         this.initializeElements();
         this.initializeSpeechRecognition();
         this.initializeAudioContext();
+        this.renderTasks();
+        this.initializePWA();
     }
     
     initializeElements() {
@@ -15,11 +18,14 @@ class VoiceTaskApp {
         this.transcriptText = document.getElementById('transcriptText');
         this.toast = document.getElementById('toast');
         this.toastMessage = document.getElementById('toastMessage');
-        this.voiceWaves = document.getElementById('voiceWaves');
         this.particles = document.getElementById('particles');
+        this.taskList = document.getElementById('taskList');
+        this.taskCount = document.getElementById('taskCount');
+        this.dateLabel = document.getElementById('dateLabel');
         
         this.micButton.addEventListener('click', () => this.toggleRecording());
         this.createParticles();
+        this.updateDateLabel();
     }
     
     createParticles() {
@@ -68,7 +74,7 @@ class VoiceTaskApp {
             this.showToast('Speech recognition is not supported in your browser');
             return;
         }
-        
+
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         this.recognition = new SpeechRecognition();
         
@@ -139,10 +145,8 @@ class VoiceTaskApp {
     updateRecordingUI(recording) {
         if (recording) {
             this.micButton.classList.add('recording');
-            this.voiceWaves.classList.add('active');
         } else {
             this.micButton.classList.remove('recording');
-            this.voiceWaves.classList.remove('active');
         }
     }
     
@@ -198,6 +202,7 @@ class VoiceTaskApp {
         
         this.tasks.unshift(task);
         this.saveTasks();
+        this.renderTasks();
         this.showToast(`Task added: ${text}`);
     }
     
@@ -209,6 +214,7 @@ class VoiceTaskApp {
         if (task) {
             task.completed = true;
             this.saveTasks();
+            this.renderTasks();
             this.showToast(`Task completed: ${task.text}`);
         } else {
             this.showToast(`Task not found: ${taskText}`);
@@ -223,6 +229,7 @@ class VoiceTaskApp {
         if (taskIndex !== -1) {
             const deletedTask = this.tasks.splice(taskIndex, 1)[0];
             this.saveTasks();
+            this.renderTasks();
             this.showToast(`Task deleted: ${deletedTask.text}`);
         } else {
             this.showToast(`Task not found: ${taskText}`);
@@ -234,6 +241,7 @@ class VoiceTaskApp {
         if (completedCount > 0) {
             this.tasks = this.tasks.filter(t => !t.completed);
             this.saveTasks();
+            this.renderTasks();
             this.showToast(`Cleared ${completedCount} completed task${completedCount > 1 ? 's' : ''}`);
         } else {
             this.showToast('No completed tasks to clear');
@@ -256,6 +264,143 @@ class VoiceTaskApp {
     loadTasks() {
         const saved = localStorage.getItem('voiceTasks');
         return saved ? JSON.parse(saved) : [];
+    }
+
+    updateDateLabel() {
+        if (!this.dateLabel) return;
+        const now = new Date();
+        const options = { weekday: 'short', month: 'short', day: 'numeric' };
+        this.dateLabel.textContent = now.toLocaleDateString(undefined, options);
+    }
+
+    formatRelativeDate(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+        return date.toLocaleDateString();
+    }
+
+    toggleTaskComplete(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        task.completed = !task.completed;
+        this.saveTasks();
+        this.renderTasks();
+    }
+
+    deleteTaskById(taskId) {
+        this.tasks = this.tasks.filter(t => t.id !== taskId);
+        this.saveTasks();
+        this.renderTasks();
+    }
+
+    renderTasks() {
+        if (!this.taskList || !this.taskCount) return;
+
+        if (this.tasks.length === 0) {
+            this.taskList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-title">Nothing on your mind.</div>
+                    <div class="empty-caption">Tap the mic and just say what you need to remember.</div>
+                </div>
+            `;
+            this.taskCount.textContent = '0';
+            return;
+        }
+
+        const activeTasks = this.tasks.filter(t => !t.completed);
+        const completedTasks = this.tasks.filter(t => t.completed);
+
+        let html = '';
+
+        if (activeTasks.length > 0) {
+            html += '<div class="section-label">ACTIVE</div>';
+            activeTasks.forEach(task => {
+                html += this.createTaskHTML(task);
+            });
+        }
+
+        if (completedTasks.length > 0) {
+            html += '<div class="section-label">COMPLETED</div>';
+            completedTasks.forEach(task => {
+                html += this.createTaskHTML(task);
+            });
+        }
+
+        this.taskList.innerHTML = html;
+        this.taskCount.textContent = String(activeTasks.length);
+
+        // Wire up interactions
+        this.tasks.forEach(task => {
+            const checkbox = document.getElementById(`task-check-${task.id}`);
+            const deleteBtn = document.getElementById(`task-delete-${task.id}`);
+
+            if (checkbox) {
+                checkbox.addEventListener('change', () => this.toggleTaskComplete(task.id));
+            }
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', () => this.deleteTaskById(task.id));
+            }
+        });
+    }
+
+    createTaskHTML(task) {
+        const completedClass = task.completed ? ' completed' : '';
+        const textClass = task.completed ? 'task-text completed' : 'task-text';
+
+        return `
+            <article class="task-card${completedClass}">
+                <input
+                    id="task-check-${task.id}"
+                    class="task-checkbox"
+                    type="checkbox"
+                    ${task.completed ? 'checked' : ''}
+                    aria-label="Mark task as ${task.completed ? 'active' : 'completed'}"
+                />
+                <div class="task-main">
+                    <div class="${textClass}">${this.escapeHtml(task.text)}</div>
+                    <div class="task-meta">${this.formatRelativeDate(task.createdAt)}</div>
+                </div>
+                <button
+                    id="task-delete-${task.id}"
+                    class="task-delete"
+                    aria-label="Delete task"
+                >
+                    <!-- small x icon -->
+                    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                    </svg>
+                </button>
+            </article>
+        `;
+    }
+
+    escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    initializePWA() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {
+                // fail silently; offline is a bonus
+            });
+        }
     }
 }
 

@@ -8,140 +8,502 @@
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
-    
+
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         html, body {
             width: 100%;
             height: 100%;
+        }
+
+        body {
+            background:
+                radial-gradient(circle at top, rgba(80, 80, 255, 0.25) 0, transparent 55%),
+                radial-gradient(circle at bottom, rgba(255, 80, 120, 0.25) 0, #000000 60%);
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, -webkit-system-font, 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .app-shell {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 560px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .background-particles {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            opacity: 0.25;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.8);
+            animation: float 18s linear infinite;
+        }
+
+        @keyframes float {
+            from {
+                transform: translate3d(0, 100vh, 0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translate3d(0, -120vh, 0);
+                opacity: 0;
+            }
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 18px 8px;
+            z-index: 10;
+        }
+
+        .top-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .day-label {
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            font-weight: 500;
+            opacity: 0.65;
+        }
+
+        .date-label {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .top-right {
+            text-align: right;
+        }
+
+        .task-count {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .task-caption {
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        .content {
+            position: relative;
+            flex: 1;
+            padding: 8px 18px 120px;
             overflow: hidden;
         }
-        
-        body {
-            background: #000000;
-            color: #ffffff;
+
+        .task-list {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .task-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .task-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            opacity: 0.55;
+            margin: 12px 0 8px;
+        }
+
+        .section-label:first-of-type {
+            margin-top: 4px;
+        }
+
+        .task-card {
+            position: relative;
+            margin-bottom: 10px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.10), rgba(0, 0, 0, 0.75));
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow:
+                0 18px 40px rgba(0, 0, 0, 0.95),
+                0 0 0 0 rgba(255, 255, 255, 0.02);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+        }
+
+        .task-card:hover {
+            transform: translateY(-1px);
+            border-color: rgba(255, 255, 255, 0.16);
+            box-shadow:
+                0 22px 45px rgba(0, 0, 0, 1),
+                0 0 0 1px rgba(255, 255, 255, 0.03);
+        }
+
+        .task-card.completed {
+            opacity: 0.45;
+        }
+
+        .task-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            margin-top: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.32);
+            background: rgba(0, 0, 0, 0.8);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            outline: none;
+            transition: all 0.22s ease;
+        }
+
+        .task-checkbox::after {
+            content: '';
+            width: 9px;
+            height: 9px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            transform: scale(0);
+            transition: transform 0.18s ease-out;
+        }
+
+        .task-checkbox:checked {
+            border-color: rgba(74, 222, 128, 0.9);
+            background: radial-gradient(circle at top, rgba(74, 222, 128, 0.25), rgba(0, 0, 0, 0.9));
+            box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.12);
+        }
+
+        .task-checkbox:checked::after {
+            transform: scale(1);
+        }
+
+        .task-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .task-text {
+            font-size: 15px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .task-text.completed {
+            text-decoration: line-through;
+            text-decoration-thickness: 1px;
+            opacity: 0.7;
+        }
+
+        .task-meta {
+            margin-top: 6px;
+            font-size: 11px;
+            opacity: 0.55;
+        }
+
+        .task-delete {
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 999px;
+            color: rgba(255, 255, 255, 0.45);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
+        }
+
+        .task-delete:hover {
+            background: rgba(248, 113, 113, 0.14);
+            color: rgba(248, 113, 113, 0.95);
+        }
+
+        .task-delete:active {
+            transform: scale(0.96);
+        }
+
+        .empty-state {
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            position: relative;
+            text-align: center;
+            flex-direction: column;
+            gap: 10px;
+            opacity: 0.7;
         }
-        
+
+        .empty-title {
+            font-size: 15px;
+            font-weight: 400;
+        }
+
+        .empty-caption {
+            font-size: 13px;
+            opacity: 0.6;
+        }
+
+        .mic-dock {
+            position: fixed;
+            left: 50%;
+            bottom: calc(18px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .mic-shadow {
+            position: absolute;
+            inset: 18px 24px 0;
+            background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85), transparent 65%);
+            filter: blur(18px);
+            opacity: 0.95;
+        }
+
         .mic-button {
             width: 80px;
             height: 80px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background:
+                radial-gradient(circle at top, rgba(255, 255, 255, 0.25), rgba(15, 15, 15, 0.98));
+            box-shadow:
+                0 18px 40px rgba(0, 0, 0, 1),
+                0 0 0 1px rgba(255, 255, 255, 0.04);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.3s ease;
+            pointer-events: auto;
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
             position: relative;
         }
-        
+
         .mic-button:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.4);
-            transform: scale(1.05);
+            transform: translateY(-1px) scale(1.03);
+            border-color: rgba(255, 255, 255, 0.32);
+            box-shadow:
+                0 22px 45px rgba(0, 0, 0, 1),
+                0 0 0 1px rgba(255, 255, 255, 0.06);
         }
-        
+
+        .mic-button:active {
+            transform: translateY(1px) scale(0.97);
+            box-shadow:
+                0 12px 28px rgba(0, 0, 0, 0.9),
+                0 0 0 1px rgba(255, 255, 255, 0.03);
+        }
+
         .mic-button.recording {
-            background: rgba(255, 59, 48, 0.2);
-            border-color: rgba(255, 59, 48, 0.5);
-            animation: pulse 2s ease-in-out infinite;
+            background:
+                radial-gradient(circle at top, rgba(252, 165, 165, 0.25), rgba(15, 15, 15, 0.98));
+            border-color: rgba(248, 113, 113, 0.75);
+            box-shadow:
+                0 0 0 0 rgba(248, 113, 113, 0.55),
+                0 22px 55px rgba(0, 0, 0, 1);
+            animation: micPulse 1.8s ease-in-out infinite;
         }
-        
-        @keyframes pulse {
+
+        @keyframes micPulse {
             0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4);
+                box-shadow:
+                    0 0 0 0 rgba(248, 113, 113, 0.55),
+                    0 20px 52px rgba(0, 0, 0, 1);
+                transform: translateY(0) scale(1);
             }
             50% {
-                transform: scale(1.05);
-                box-shadow: 0 0 0 20px rgba(255, 59, 48, 0);
+                box-shadow:
+                    0 0 0 26px rgba(248, 113, 113, 0),
+                    0 26px 60px rgba(0, 0, 0, 1);
+                transform: translateY(-2px) scale(1.04);
             }
         }
-        
+
         .mic-icon {
-            width: 32px;
-            height: 32px;
-            stroke: white;
+            width: 34px;
+            height: 34px;
+            stroke: #ffffff;
             stroke-width: 1.5;
             fill: none;
             stroke-linecap: round;
             stroke-linejoin: round;
+            transition: transform 0.24s ease, opacity 0.24s ease;
         }
-        
+
+        .mic-button.recording .mic-icon {
+            opacity: 0.9;
+            transform: scale(1.04);
+        }
+
         .transcription {
             position: fixed;
-            bottom: 120px;
             left: 50%;
+            bottom: calc(120px + env(safe-area-inset-bottom));
             transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 16px 24px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            max-width: 80%;
-            text-align: center;
+            background: rgba(7, 7, 8, 0.9);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 12px 20px;
+            max-width: min(90%, 480px);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 1);
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transform-origin: center;
+            transition: opacity 0.22s ease, transform 0.22s ease;
+            pointer-events: none;
+            z-index: 22;
         }
-        
+
         .transcription.show {
             opacity: 1;
+            transform: translateX(-50%) translateY(-6px);
         }
-        
+
+        #transcriptText {
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.92);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .toast {
             position: fixed;
-            top: 40px;
+            top: calc(18px + env(safe-area-inset-top));
             left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 12px 20px;
-            border-radius: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: translateX(-50%) translateY(-16px);
+            background: rgba(15, 15, 16, 0.9);
+            border-radius: 999px;
+            padding: 10px 18px;
+            font-size: 13px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
             opacity: 0;
-            transition: opacity 0.3s ease;
             pointer-events: none;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: opacity 0.22s ease, transform 0.22s ease;
+            z-index: 22;
         }
-        
+
         .toast.show {
             opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (min-width: 768px) {
+            .app-shell {
+                border-radius: 24px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                margin-top: 12px;
+                margin-bottom: 12px;
+                overflow: hidden;
+                box-shadow:
+                    0 40px 140px rgba(0, 0, 0, 0.95),
+                    0 0 0 1px rgba(255, 255, 255, 0.02);
+            }
+
+            body {
+                padding: 24px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Microphone Button -->
-    <button id="micButton" class="mic-button">
-        <svg class="mic-icon" viewBox="0 0 24 24">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-            <line x1="12" y1="19" x2="12" y2="23"/>
-        </svg>
-    </button>
+    <div id="particles" class="background-particles"></div>
 
-    <!-- Transcription Display -->
+    <div class="app-shell">
+        <header class="top-bar">
+            <div class="top-left">
+                <div class="day-label">Today</div>
+                <div id="dateLabel" class="date-label"></div>
+            </div>
+            <div class="top-right">
+                <div class="task-count" id="taskCount">0</div>
+                <div class="task-caption">active tasks</div>
+            </div>
+        </header>
+
+        <main class="content">
+            <div id="taskList" class="task-list"></div>
+        </main>
+    </div>
+
+    <div class="mic-dock">
+        <div class="mic-shadow"></div>
+        <button id="micButton" class="mic-button" aria-label="Toggle voice capture">
+            <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 2.5a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0v-7a3 3 0 0 0-3-3z"/>
+                <path d="M19 11v1a7 7 0 0 1-14 0v-1"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
+            </svg>
+        </button>
+    </div>
+
     <div id="transcription" class="transcription">
         <div id="transcriptText"></div>
     </div>
 
-    <!-- Toast Notification -->
     <div id="toast" class="toast">
-        <div id="toastMessage"></div>
+        <span id="toastMessage"></span>
     </div>
 
     <script src="app-minimal.js"></script>
