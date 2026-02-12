@@ -283,28 +283,24 @@
         .mic-icon .wave {
             fill: none;
             stroke: #000000;
-            stroke-width: 1.6;
+            stroke-width: 1.7;
             stroke-linecap: round;
             opacity: 0.9;
-            transform-origin: 50% 50%;
         }
 
         .mic-button.recording .wave {
-            animation: waveRipple 1s ease-in-out infinite;
+            animation: waveFloat 1.1s ease-in-out infinite;
         }
 
-        @keyframes waveRipple {
+        @keyframes waveFloat {
             0% {
-                stroke-width: 1.6;
-                opacity: 0.9;
+                d: path("M6 13c1.4-2 3-3 4.5-3s3.1 1 4.5 3");
             }
             50% {
-                stroke-width: 2.1;
-                opacity: 1;
+                d: path("M6 12.5c1.4-2 3-3.2 4.5-3.2s3.1 1.2 4.5 3.2");
             }
             100% {
-                stroke-width: 1.6;
-                opacity: 0.9;
+                d: path("M6 13c1.4-2 3-3 4.5-3s3.1 1 4.5 3");
             }
         }
 
@@ -407,7 +403,7 @@
         <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path
                 class="wave"
-                d="M5 13c1.2-2 2.4-3 3.6-3 1.2 0 1.8 1 3 1s1.8-1 3-1 2.4 1 3.6 3"
+                d="M6 13c1.4-2 3-3 4.5-3s3.1 1 4.5 3"
             />
         </svg>
     </button>
