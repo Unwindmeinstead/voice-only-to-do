@@ -293,11 +293,50 @@
         .mic-icon {
             width: 26px;
             height: 26px;
-            stroke: #ffffff;
-            stroke-width: 1.4;
+        }
+
+        .mic-icon circle {
             fill: none;
+            stroke: rgba(255, 255, 255, 0.35);
+            stroke-width: 1.2;
+        }
+
+        .mic-icon .wave {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.9);
+            stroke-width: 1.4;
             stroke-linecap: round;
-            stroke-linejoin: round;
+            transform-origin: center bottom;
+            transform: scaleY(0.6);
+            opacity: 0.9;
+            transition: transform 0.2s ease, stroke 0.2s ease, opacity 0.2s ease;
+        }
+
+        .mic-button.recording .wave {
+            animation: wavePulse 0.7s ease-in-out infinite;
+        }
+
+        .mic-button.recording .wave-2 {
+            animation-delay: 0.1s;
+        }
+
+        .mic-button.recording .wave-3 {
+            animation-delay: 0.2s;
+        }
+
+        @keyframes wavePulse {
+            0% {
+                transform: scaleY(0.4);
+                opacity: 0.7;
+            }
+            50% {
+                transform: scaleY(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scaleY(0.4);
+                opacity: 0.7;
+            }
         }
 
         .transcription {
@@ -399,9 +438,10 @@
         <div class="mic-shadow"></div>
         <button id="micButton" class="mic-button" aria-label="Toggle voice capture">
             <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 2.5a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0v-7a3 3 0 0 0-3-3z"/>
-                <path d="M19 11v1a7 7 0 0 1-14 0v-1"/>
-                <line x1="12" y1="19" x2="12" y2="22"/>
+                <circle cx="12" cy="12" r="8" />
+                <path class="wave wave-1" d="M9 9v6" />
+                <path class="wave wave-2" d="M12 8v8" />
+                <path class="wave wave-3" d="M15 9v6" />
             </svg>
         </button>
     </div>
