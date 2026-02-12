@@ -333,12 +333,34 @@
         }
 
         .bar {
-            width: 3px;
-            height: 12px;
+            width: 3.5px;
             background: #000000;
             border-radius: 99px;
-            opacity: 0.2;
-            transition: all 0.3s ease;
+            opacity: 0.25;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Offline heights */
+        .bar-1 {
+            height: 6px;
+        }
+
+        .bar-2 {
+            height: 10px;
+        }
+
+        .bar-3 {
+            height: 16px;
+            opacity: 0.4;
+        }
+
+        /* Center bar slightly more prominent */
+        .bar-4 {
+            height: 10px;
+        }
+
+        .bar-5 {
+            height: 6px;
         }
 
         .mic-button.recording .bar {
@@ -350,15 +372,19 @@
         }
 
         .mic-button.recording .bar-2 {
-            animation: eq 0.8s ease-in-out infinite 0.15s;
+            animation: eq 0.8s ease-in-out infinite 0.1s;
         }
 
         .mic-button.recording .bar-3 {
-            animation: eq 0.8s ease-in-out infinite 0.3s;
+            animation: eq 0.8s ease-in-out infinite 0.2s;
         }
 
         .mic-button.recording .bar-4 {
-            animation: eq 0.8s ease-in-out infinite 0.45s;
+            animation: eq 0.8s ease-in-out infinite 0.3s;
+        }
+
+        .mic-button.recording .bar-5 {
+            animation: eq 0.8s ease-in-out infinite 0.4s;
         }
 
         .mic-button.success .bar {
@@ -375,7 +401,6 @@
 
         @keyframes successPulse {
             0% {
-                height: 8px;
                 transform: scaleY(1);
             }
 
@@ -405,6 +430,10 @@
 
         .mic-button.success .bar-4 {
             animation-delay: 0.15s;
+        }
+
+        .mic-button.success .bar-5 {
+            animation-delay: 0.2s;
         }
 
         @keyframes eq {
@@ -540,6 +569,7 @@
             <div class="bar bar-2"></div>
             <div class="bar bar-3"></div>
             <div class="bar bar-4"></div>
+            <div class="bar bar-5"></div>
         </div>
     </button>
 
