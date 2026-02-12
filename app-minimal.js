@@ -47,8 +47,15 @@ class VoiceTaskApp {
 
         // Close modal on click outside
         this.settingsModal.addEventListener('click', (e) => {
-            if (e.target === this.settingsModal) this.toggleSettings(false);
+            if (e.target === this.settingsModal) {
+                this.saveSettings();
+                this.toggleSettings(false);
+            }
         });
+
+        // Sync URL live feedback
+        this.syncUrlInput.addEventListener('input', () => this.updateSyncStatus());
+
         this.createParticles();
         this.updateDateLabel();
     }
@@ -394,10 +401,34 @@ class VoiceTaskApp {
     }
 
     saveSettings() {
+        const url = this.syncUrlInput.value.trim();
+        const isEnabled = document.getElementById('toggle-sync').classList.contains('active');
+
         localStorage.setItem('doneSettings', JSON.stringify({
-            syncUrl: this.syncUrlInput.value,
-            syncEnabled: document.getElementById('toggle-sync').classList.contains('active')
+            syncUrl: url,
+            syncEnabled: isEnabled
         }));
+
+        this.updateSyncStatus();
+        if (isEnabled && url) {
+            this.syncToCloud();
+        }
+    }
+
+    updateSyncStatus() {
+        const url = this.syncUrlInput.value.trim();
+        const isEnabled = document.getElementById('toggle-sync').classList.contains('active');
+
+        if (!url) {
+            this.syncStatus.textContent = 'Enter URL to start';
+            this.syncStatus.style.color = 'rgba(255,255,255,0.4)';
+        } else if (!isEnabled) {
+            this.syncStatus.textContent = 'Sync is paused';
+            this.syncStatus.style.color = '#f87171';
+        } else {
+            this.syncStatus.textContent = 'Ready for Cloud';
+            this.syncStatus.style.color = '#4ade80';
+        }
     }
 
     loadSettings() {
@@ -405,10 +436,12 @@ class VoiceTaskApp {
         if (saved) {
             const settings = JSON.parse(saved);
             this.syncUrlInput.value = settings.syncUrl || '';
+            const toggle = document.getElementById('toggle-sync');
             if (settings.syncEnabled) {
-                document.getElementById('toggle-sync').classList.add('active');
+                toggle.classList.add('active');
             }
         }
+        this.updateSyncStatus();
     }
 
     loadTasks() {
