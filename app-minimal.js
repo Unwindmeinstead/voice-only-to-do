@@ -22,8 +22,8 @@ class VoiceTaskApp {
             this.syncToCloud();
         }
 
-        // Start background heart-beat backup (every 5 minutes)
-        setInterval(() => this.syncToCloud(), 300000);
+        // Instant sync heartbeat (every 10 seconds for background safety)
+        setInterval(() => this.syncToCloud(), 10000);
     }
 
     initializeElements() {
