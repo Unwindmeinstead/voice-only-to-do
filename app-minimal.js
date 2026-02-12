@@ -7,14 +7,23 @@ class VoiceTaskApp {
         this.playBeep = null;
         this.editingTaskId = null;
 
+        this.user = this.loadUser();
         this.initializeElements();
         this.initializeSpeechRecognition();
         this.initializeAudioContext();
         this.renderTasks();
         this.initializePWA();
 
-        // Start background heart-beat sync (every 60 seconds)
-        setInterval(() => this.syncToCloud(), 60000);
+        // Expose instance for global callbacks (like Google Auth)
+        window.app = this;
+
+        // Initial sync from cloud if logged in
+        if (this.user && this.syncUrlInput.value) {
+            this.pullFromCloud();
+        }
+
+        // Start background heart-beat sync (every 5 minutes)
+        setInterval(() => this.syncToCloud(), 300000);
     }
 
 
@@ -33,11 +42,18 @@ class VoiceTaskApp {
         this.syncUrlInput = document.getElementById('syncUrl');
         this.syncStatus = document.getElementById('syncStatus');
         this.forceSyncBtn = document.getElementById('forceSync');
+        this.openSettingsBtn = document.getElementById('openSettings');
+        this.userProfile = document.getElementById('userProfile');
+        this.userAvatar = document.getElementById('userAvatar');
+        this.userNameLabel = document.getElementById('userName');
 
         this.loadSettings();
 
         this.micButton.addEventListener('click', () => this.toggleRecording());
         this.forceSyncBtn.addEventListener('click', () => this.syncToCloud(true));
+        if (this.openSettingsBtn) {
+            this.openSettingsBtn.addEventListener('click', () => this.toggleSettings(true));
+        }
         this.closeSettings.addEventListener('click', () => {
             this.saveSettings();
             this.toggleSettings(false);
@@ -59,8 +75,25 @@ class VoiceTaskApp {
             }
         });
 
-        // Sync URL live feedback
-        this.syncUrlInput.addEventListener('input', () => this.updateSyncStatus());
+        // Sync URL live saving (Crucial for iOS PWA persistence)
+        this.syncUrlInput.addEventListener('input', () => {
+            this.updateSyncStatus();
+            this.saveSettings();
+        });
+
+        // Calendar Listeners
+        this.openCalendar = document.getElementById('openCalendar');
+        this.calendarModal = document.getElementById('calendarModal');
+        this.closeCalendar = document.getElementById('closeCalendar');
+        this.calendarGrid = document.getElementById('calendarGrid');
+
+        this.openCalendar.addEventListener('click', () => {
+            this.renderCalendar();
+            this.calendarModal.classList.add('show');
+        });
+        this.closeCalendar.addEventListener('click', () => {
+            this.calendarModal.classList.remove('show');
+        });
 
         this.createParticles();
         this.updateDateLabel();
@@ -226,6 +259,11 @@ class VoiceTaskApp {
     processVoiceCommand(transcript) {
         const text = transcript.toLowerCase().trim();
 
+        // Resume Audio Context (iOS Policy)
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+
         // Handle Edit/Re-dictation if active
         if (this.editingTaskId) {
             const id = this.editingTaskId;
@@ -234,48 +272,30 @@ class VoiceTaskApp {
             return;
         }
 
-        // Settings (Universal)
+        // Common commands
         if (text.includes('settings') || text.includes('config')) {
             this.toggleSettings(true);
             return;
         }
 
-        // Action Detection (Complete/Delete)
-        const completeKeywords = ['complete', 'done', 'finish', 'check off'];
-        for (const kw of completeKeywords) {
-            if (text.startsWith(kw)) {
-                this.completeTask(text.replace(kw, '').trim());
-                return;
-            }
-        }
-
-        const deleteKeywords = ['delete', 'remove', 'trash', 'remove task'];
-        for (const kw of deleteKeywords) {
-            if (text.startsWith(kw)) {
-                this.deleteTask(text.replace(kw, '').trim());
-                return;
-            }
-        }
-
-        // Type Intelligence (Task/Note/Reminder)
+        // Type Intelligence (Task / Notification / Event)
         let type = 'task';
         let finalContent = text;
 
-        if (text.startsWith('remind me to') || text.startsWith('reminder')) {
-            type = 'reminder';
-            finalContent = text.replace('remind me to', '').replace('reminder', '').trim();
-        } else if (text.startsWith('note down') || text.startsWith('take a note') || text.startsWith('note')) {
-            type = 'note';
-            finalContent = text.replace('note down', '').replace('take a note', '').replace('note', '').trim();
-        } else {
-            // Clean common add prefixes
-            const addPrefixes = ['add task', 'add', 'create', 'new task'];
-            for (const pre of addPrefixes) {
-                if (text.startsWith(pre)) {
-                    finalContent = text.replace(pre, '').trim();
-                    break;
-                }
-            }
+        // Date/Time keywords for Event detection
+        const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'at', 'pm', 'am', 'morning', 'afternoon', 'night', 'tonight'];
+        const hasDate = dateKeywords.some(kw => text.includes(kw));
+
+        if (text.startsWith('remind me') || text.startsWith('notification') || text.startsWith('alert')) {
+            type = 'notification';
+            finalContent = text.replace('remind me', '').replace('notification', '').replace('alert', '').trim();
+        } else if (hasDate) {
+            type = 'event';
+        }
+
+        // Syncing with user preference: if they said "note", treat as task or notification
+        if (text.startsWith('note')) {
+            finalContent = text.replace('note', '').trim();
         }
 
         if (finalContent.length > 0) {
@@ -441,12 +461,41 @@ class VoiceTaskApp {
 
         localStorage.setItem('doneSettings', JSON.stringify({
             syncUrl: url,
-            syncEnabled: isEnabled
+            syncEnabled: isEnabled,
+            user: this.user
         }));
 
         this.updateSyncStatus();
-        if (isEnabled && url) {
-            this.syncToCloud();
+    }
+
+    async pullFromCloud() {
+        const url = this.syncUrlInput.value.trim();
+        if (!url || !url.includes('/exec')) return;
+
+        try {
+            this.syncStatus.textContent = 'Updating...';
+            // GET request to retrieve data
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data && data.tasks) {
+                // Simple merge: prefer newer IDs (timestamp based)
+                const cloudTasks = data.tasks;
+                const localIds = new Set(this.tasks.map(t => t.id));
+                const newTasks = cloudTasks.filter(t => !localIds.has(t.id));
+
+                if (newTasks.length > 0) {
+                    this.tasks = [...newTasks, ...this.tasks];
+                    this.tasks.sort((a, b) => b.id - a.id);
+                    this.renderTasks();
+                    this.showToast(`Fetched ${newTasks.length} new items`);
+                }
+            }
+            this.syncStatus.textContent = 'Cloud Active';
+            this.syncStatus.style.color = '#4ade80';
+        } catch (e) {
+            console.error('Pull failed', e);
+            this.syncStatus.textContent = 'Sync Paused';
         }
     }
 
@@ -475,8 +524,50 @@ class VoiceTaskApp {
             if (settings.syncEnabled) {
                 toggle.classList.add('active');
             }
+            this.user = settings.user || null;
+            if (this.user) this.updateUserUI();
         }
         this.updateSyncStatus();
+    }
+
+    updateUserUI() {
+        if (!this.user) return;
+        if (this.userProfile) this.userProfile.style.display = 'flex';
+        const signinBtn = document.querySelector('.g_id_signin');
+        if (signinBtn) signinBtn.style.display = 'none';
+        if (this.userAvatar) this.userAvatar.src = this.user.picture;
+        if (this.userNameLabel) this.userNameLabel.textContent = this.user.name;
+    }
+
+    handleGoogleSignIn(response) {
+        try {
+            // Decode the JWT (base64)
+            const base64Url = response.credential.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            this.user = JSON.parse(jsonPayload);
+            this.saveSettings();
+            this.updateUserUI();
+            this.showToast(`Logged in as ${this.user.name}`);
+
+            // Try to pull data immediately for the new user
+            if (this.syncUrlInput.value) this.pullFromCloud();
+        } catch (e) {
+            console.error('Login failed', e);
+            this.showToast('Login failed');
+        }
+    }
+
+    loadUser() {
+        const saved = localStorage.getItem('doneSettings');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            return parsed.user || null;
+        }
+        return null;
     }
 
     loadTasks() {
@@ -578,10 +669,10 @@ class VoiceTaskApp {
         const type = task.type || 'task';
 
         let icon = '';
-        if (type === 'note') {
-            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> NOTE`;
-        } else if (type === 'reminder') {
-            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> REMINDER`;
+        if (type === 'notification') {
+            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> NOTIFICATION`;
+        } else if (type === 'event') {
+            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> EVENT`;
         } else {
             icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> TASK`;
         }
@@ -642,6 +733,47 @@ class VoiceTaskApp {
             navigator.serviceWorker.register('/sw.js').catch(() => {
                 // fail silently; offline is a bonus
             });
+        }
+    }
+
+    renderCalendar() {
+        if (!this.calendarGrid) return;
+        this.calendarGrid.innerHTML = '';
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+
+        // Header weekdays
+        ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
+            const el = document.createElement('div');
+            el.className = 'calendar-weekday';
+            el.textContent = day;
+            this.calendarGrid.appendChild(el);
+        });
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // Empty spaces
+        for (let i = 0; i < firstDay; i++) {
+            this.calendarGrid.appendChild(document.createElement('div'));
+        }
+
+        // Actual days
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dayEl = document.createElement('div');
+            const isToday = d === now.getDate() && month === now.getMonth() && year === now.getFullYear();
+            dayEl.className = `calendar-day ${isToday ? 'today' : ''}`;
+
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const hasTasks = this.tasks.some(t => t.createdAt.startsWith(dateStr));
+
+            dayEl.innerHTML = `
+                <span>${d}</span>
+                ${hasTasks ? '<div class="calendar-dot"></div>' : ''}
+            `;
+            this.calendarGrid.appendChild(dayEl);
         }
     }
 }

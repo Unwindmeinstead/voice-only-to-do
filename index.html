@@ -3,16 +3,17 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Done</title>
-    <meta name="description" content="A beautiful voice-only task management PWA">
-    <meta name="theme-color" content="#000000">
+    <title>Done — Smart Voice Productivity</title>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <style>
         * {
@@ -53,6 +54,14 @@
             justify-content: space-between;
             padding: 16px 18px 8px;
             z-index: 10;
+        }
+
+        .top-center {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
         }
 
         .top-left {
@@ -552,19 +561,18 @@
         }
 
         /* Settings Modal */
+        /* iOS Style Settings Overlay */
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(4, 4, 7, 0.8);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
+            background: rgba(0, 0, 0, 0.4);
             display: flex;
-            align-items: center;
+            align-items: flex-end;
             justify-content: center;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
-            z-index: 100;
+            z-index: 2000;
         }
 
         .modal-overlay.show {
@@ -573,61 +581,63 @@
         }
 
         .modal-content {
-            background: #0b0b0f;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 44px;
-            width: 92%;
-            max-width: 440px;
-            padding: 44px;
-            transform: scale(0.96) translateY(10px);
+            background: #1c1c1e;
+            /* iOS Dark Standard */
+            width: 100%;
+            height: 94%;
+            max-width: none;
+            border-radius: 20px 20px 0 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%);
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow:
-                0 40px 120px rgba(0, 0, 0, 0.8),
-                inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+            overflow: hidden;
         }
 
         .modal-overlay.show .modal-content {
-            transform: scale(1) translateY(0);
+            transform: translateY(0);
         }
 
         .modal-header {
+            padding: 16px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 36px;
+            background: #1c1c1e;
+            border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
         }
 
         .modal-title {
-            font-family: 'Poppins', sans-serif;
-            font-size: 32px;
+            font-size: 17px;
             font-weight: 600;
             color: #ffffff;
-            letter-spacing: -0.04em;
         }
 
         .close-modal {
-            background: rgba(255, 255, 255, 0.04);
+            color: #0a84ff;
+            /* iOS Blue */
+            font-size: 17px;
+            font-weight: 420;
+            background: none;
             border: none;
-            color: rgba(255, 255, 255, 0.6);
-            padding: 12px;
-            border-radius: 999px;
             cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .close-modal:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #ffffff;
-            transform: scale(1.05);
+            padding: 8px 0;
         }
 
         .settings-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 400px;
+            flex: 1;
+            padding: 20px 16px;
             overflow-y: auto;
-            padding-right: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .settings-group {
+            background: #2c2c2e;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            overflow: hidden;
         }
 
         .settings-list::-webkit-scrollbar {
@@ -643,15 +653,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 18px 24px;
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.02);
-            transition: all 0.2s ease;
+            padding: 12px 16px;
+            background: transparent;
+            border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
         }
 
-        .settings-item:hover {
-            background: rgba(255, 255, 255, 0.04);
+        .settings-item:last-child {
+            border-bottom: none;
         }
 
         .settings-toggle {
@@ -711,19 +719,76 @@
         }
 
         .settings-item-label {
-            font-family: 'Poppins', sans-serif;
-            font-size: 17px;
-            font-weight: 500;
+            font-size: 15px;
+            font-weight: 400;
             color: #ffffff;
-            letter-spacing: -0.01em;
         }
 
         .settings-item-desc {
-            font-family: 'Poppins', sans-serif;
             font-size: 13px;
-            opacity: 0.4;
+            opacity: 0.5;
             margin-top: 2px;
-            letter-spacing: 0.01em;
+        }
+
+        .settings-input {
+            width: 100%;
+            background: #3a3a3c;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #ffffff;
+            font-size: 16px;
+            margin-top: 12px;
+            outline: none;
+        }
+
+        /* Calendar Premium Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.03);
+            margin-top: 10px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .calendar-day {
+            background: #1c1c1e;
+            aspect-ratio: 0.85;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.9);
+            position: relative;
+        }
+
+        .calendar-day.today {
+            color: #0a84ff;
+            font-weight: 600;
+        }
+
+        .calendar-dot {
+            width: 4px;
+            height: 4px;
+            background: #0a84ff;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 8px;
+        }
+
+        .calendar-weekday {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            padding: 12px 0;
+            background: #1c1c1e;
+            text-align: center;
         }
 
         .settings-status {
@@ -732,6 +797,36 @@
             letter-spacing: 0.1em;
             color: rgba(255, 255, 255, 0.4);
             text-transform: uppercase;
+        }
+
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .task-card.notification .type-badge {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        .task-card.event .type-badge {
+            color: #f472b6;
+            background: rgba(244, 114, 182, 0.1);
+        }
+
+        .task-card.task .type-badge {
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
         }
 
         .type-badge {
@@ -788,13 +883,16 @@
 
     <div class="app-shell">
         <header class="top-bar">
-            <div class="top-left">
-                <div class="day-label">Today</div>
+            <div class="top-left" id="openCalendar" style="cursor: pointer;">
+                <div class="day-label" id="dayLabel">Today</div>
                 <div id="dateLabel" class="date-label"></div>
             </div>
-            <div class="top-right">
+
+            <div class="top-center"></div>
+
+            <div class="top-right" id="openSettings" style="cursor: pointer; text-align: right;">
                 <div class="task-count" id="taskCount">0</div>
-                <div class="task-caption">active tasks</div>
+                <div class="task-caption">items</div>
             </div>
         </header>
 
@@ -824,69 +922,81 @@
     <div id="settingsModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Done</h2>
-                <button id="closeSettings" class="close-modal">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
+                <div class="modal-title">Settings</div>
+                <button id="closeSettings" class="close-modal">Done</button>
             </div>
             <div class="settings-list">
-                <div class="settings-item">
-                    <div>
-                        <div class="settings-item-label">Dark Mode</div>
-                        <div class="settings-item-desc">System optimized theme</div>
-                    </div>
-                    <div class="settings-toggle active" id="toggle-dark-mode"></div>
-                </div>
-                <div class="settings-item" style="flex-direction: column; align-items: flex-start; gap: 12px;">
-                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                        <div>
-                            <div class="settings-item-label">Cloud Sync</div>
-                            <div class="settings-item-desc" id="syncStatus">Not configured</div>
+                <div class="settings-group">
+                    <div class="settings-item" id="userAuth" style="padding: 16px;">
+                        <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+                            <div id="g_id_onload" data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+                                data-context="signin" data-ux_mode="popup" data-callback="handleCredentialResponse"
+                                data-auto_prompt="false">
+                            </div>
+                            <div class="g_id_signin" data-type="standard" data-shape="pill" data-theme="filled_black"
+                                data-text="signin_with" data-size="medium" data-logo_alignment="left"></div>
+                            <div id="userProfile" style="display: none; flex: 1; align-items: center; gap: 12px;">
+                                <div
+                                    style="border-radius: 99px; overflow: hidden; width: 36px; height: 36px; border: 1px solid rgba(255,255,255,0.1);">
+                                    <img id="userAvatar" src="" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                <div>
+                                    <div id="userName" style="font-size: 14px; font-weight: 500;">User</div>
+                                    <div style="font-size: 11px; opacity: 0.5;">Signed In</div>
+                                </div>
+                            </div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <button id="forceSync" class="action-button"
-                                style="padding: 6px 12px; font-size: 9px; background: rgba(74, 222, 128, 0.1); border-color: rgba(74, 222, 128, 0.2); color: #4ade80;">SYNC
-                                NOW</button>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
+                        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                            <div class="settings-item-label">Cloud Sync</div>
                             <div class="settings-toggle" id="toggle-sync"></div>
                         </div>
+                        <div class="settings-item-desc" id="syncStatus">Ready to connect</div>
+                        <input type="text" id="syncUrl" class="settings-input" placeholder="Google Script Exec URL">
                     </div>
-                    <input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
-                        border-radius: 12px; padding: 10px; color: white; font-size: 11px; outline: none;">
-                </div>
-                <div class="settings-item">
-                    <div>
-                        <div class="settings-item-label">App Intelligence</div>
-                        <div class="settings-item-desc">Advanced NLP processing active</div>
+                    <div class="settings-item" id="forceSync" style="cursor: pointer;">
+                        <div class="settings-item-label" style="color: #0a84ff; font-weight: 500;">Sync Now</div>
                     </div>
-                    <div style="font-size: 12px; font-weight: 700; color: #4ade80;">ULTRA</div>
                 </div>
-                <div class="settings-item">
-                    <div>
-                        <div class="settings-item-label">Export Data</div>
-                        <div class="settings-item-desc">Download task manifest</div>
+
+                <div class="settings-group">
+                    <div class="settings-item" id="exportTasks" style="cursor: pointer;">
+                        <div class="settings-item-label" style="color: #ff3b30; font-weight: 500;">Clear All Data</div>
                     </div>
-                    <button class="action-button">EXPORT</button>
                 </div>
-                <div class="settings-item">
-                    <div>
-                        <div class="settings-item-label">Local Backup</div>
-                        <div class="settings-item-desc">Save to device storage</div>
-                    </div>
-                    <button class="action-button">SAVE</button>
-                </div>
-                <div class="settings-item"
-                    style="border: none; background: none; opacity: 0.4; justify-content: center;">
-                    <span style="font-size: 11px; letter-spacing: 0.2em;">VERSION 2.1.0-ULTRA</span>
+
+                <div style="text-align: center; font-size: 11px; opacity: 0.3; padding: 20px 0;">
+                    DONE — VERSION 2.2.0
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Calendar Modal -->
+    <div id="calendarModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Calendar</div>
+                <button id="closeCalendar" class="close-modal">Done</button>
+            </div>
+            <div class="settings-list">
+                <div id="calendarGrid" class="calendar-grid"></div>
+            </div>
+        </div>
+    </div>
+
     <script src="app-minimal.js"></script>
+    <script>
+        function handleCredentialResponse(response) {
+            if (window.app) {
+                window.app.handleGoogleSignIn(response);
+            }
+        }
+    </script>
 </body>
 
 </html>
