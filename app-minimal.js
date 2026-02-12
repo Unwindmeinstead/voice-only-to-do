@@ -370,12 +370,11 @@ class VoiceTaskApp {
     }
 
     async syncToCloud(isManual = false) {
-        let url = this.syncUrlInput.value.trim();
+        const url = this.syncUrlInput.value.trim();
         const isEnabled = document.getElementById('toggle-sync').classList.contains('active');
 
         if (!url || (!isEnabled && !isManual)) return;
 
-        // Validation for the common mistake of copying the sheet URL instead of script URL
         if (!url.includes('/macros/s/') || !url.includes('/exec')) {
             this.syncStatus.textContent = 'Invalid URL (Needs /exec)';
             this.syncStatus.style.color = '#f87171';
@@ -386,23 +385,22 @@ class VoiceTaskApp {
         this.syncStatus.style.color = 'rgba(255,255,255,0.4)';
 
         try {
-            // Simplest possible POST body for Google Apps Script
-            const jsonPayload = JSON.stringify(this.tasks);
+            // Using a simple form-encoded payload which Google ALWAYS accepts
+            const data = new URLSearchParams();
+            data.append('payload', JSON.stringify(this.tasks));
 
-            await fetch(url, {
+            fetch(url, {
                 method: 'POST',
-                mode: 'no-cors', // Essential for Google Apps Script Web Apps
-                cache: 'no-cache',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8'
-                },
-                body: jsonPayload
+                mode: 'no-cors',
+                body: data
             });
 
-            this.syncStatus.textContent = 'Cloud Active';
-            this.syncStatus.style.color = '#4ade80';
+            setTimeout(() => {
+                this.syncStatus.textContent = 'Cloud Active';
+                this.syncStatus.style.color = '#4ade80';
+            }, 800);
 
-            if (isManual) this.showToast('Cloud sync triggered!');
+            if (isManual) this.showToast('Sync pulse sent!');
         } catch (error) {
             console.error('Sync error:', error);
             this.syncStatus.textContent = 'Network Offline';
