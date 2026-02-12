@@ -10,329 +10,278 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     
-    <!-- TailwindCSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Icons -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
-    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
         * {
-            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         
         body {
-            background: #000000;
+            background: radial-gradient(circle at center, #0a0a0a 0%, #000000 100%);
             color: #ffffff;
-            overflow-x: hidden;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-        }
-        
-        .glass-morphism {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .voice-circle {
-            width: 280px;
-            height: 280px;
             position: relative;
-            background: #000000;
+            padding-bottom: 80px;
+        }
+        
+        .background-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.3;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
             border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+        
+        @keyframes float {
+            from {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(-100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            z-index: 10;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: 200;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.7;
+            margin-bottom: 20px;
+        }
+        
+        .mic-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        
+        .mic-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 10;
+            backdrop-filter: blur(10px);
         }
         
-        .voice-ring {
-            position: absolute;
-            inset: -4px;
-            border-radius: 50%;
-            background: conic-gradient(
-                from 0deg,
-                rgba(255, 255, 255, 0.1) 0deg,
-                rgba(255, 255, 255, 0.3) 90deg,
-                rgba(255, 255, 255, 0.1) 180deg,
-                rgba(255, 255, 255, 0.2) 270deg,
-                rgba(255, 255, 255, 0.1) 360deg
-            );
-            animation: rotate 4s linear infinite;
+        .mic-button:hover {
+            transform: scale(1.05);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+        
+        .mic-button.recording {
+            background: linear-gradient(145deg, rgba(255, 59, 48, 0.2), rgba(255, 59, 48, 0.1));
+            border-color: rgba(255, 59, 48, 0.4);
+            animation: recordGlow 2s ease-in-out infinite;
+        }
+        
+        @keyframes recordGlow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(255, 59, 48, 0.3);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(255, 59, 48, 0.6);
+                transform: scale(1.05);
+            }
+        }
+        
+        .mic-icon {
+            width: 36px;
+            height: 36px;
+            stroke: white;
+            stroke-width: 1.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: all 0.3s ease;
+        }
+        
+        .mic-button.recording .mic-icon {
+            animation: iconPulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes iconPulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+        
+        .status-text {
+            font-size: 14px;
+            font-weight: 300;
             opacity: 0.6;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
         }
         
-        .voice-ring::before {
-            content: '';
-            position: absolute;
-            inset: 2px;
-            border-radius: 50%;
-            background: #000000;
-        }
-        
-        .voice-circle.recording .voice-ring {
-            animation: rotate 2s linear infinite, pulse 2s ease-in-out infinite;
+        .status-text.recording {
             opacity: 1;
+            color: rgba(255, 59, 48, 0.8);
         }
         
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+        .transcription {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            padding: 20px 30px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 90%;
+            text-align: center;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
         }
         
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+        .transcription.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-10px);
+        }
+        
+        .transcript-text {
+            font-size: 16px;
+            font-weight: 300;
+            line-height: 1.4;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .toast {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            padding: 16px 24px;
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
         
         .voice-waves {
             position: absolute;
-            inset: -20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 140px;
+            height: 140px;
             border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.1);
             opacity: 0;
-            animation: waves 2s ease-out infinite;
+            pointer-events: none;
         }
         
-        .voice-circle.recording .voice-waves {
-            opacity: 1;
+        .voice-waves.active {
+            animation: waves 2s ease-out infinite;
         }
         
         @keyframes waves {
             0% {
-                transform: scale(1);
-                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
             }
             100% {
-                transform: scale(1.3);
+                transform: translate(-50%, -50%) scale(1.5);
                 opacity: 0;
             }
-        }
-        
-        .task-item {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform-origin: center;
-        }
-        
-        .task-item:hover {
-            transform: translateY(-2px);
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        @keyframes fadeIn {
-            from { 
-                opacity: 0; 
-                transform: translateY(20px); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0); 
-            }
-        }
-        
-        .checkbox-custom {
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
-            transition: all 0.3s ease;
-            position: relative;
-            cursor: pointer;
-            background: transparent;
-        }
-        
-        .checkbox-custom:checked {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-        
-        .checkbox-custom:checked::after {
-            content: '✓';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .bottom-nav {
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .nav-button {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .nav-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: scale(1.05);
-        }
-        
-        .nav-button.primary {
-            background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-        
-        .nav-button.primary:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        .transcript-bubble {
-            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .status-bar {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(20px);
-        }
-        
-        .floating {
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-5px); }
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
-    <!-- Status Bar -->
-    <div class="status-bar fixed top-0 left-0 right-0 z-50 px-6 py-2">
-        <div class="flex justify-between items-center text-white text-sm">
-            <span id="currentTime" class="font-medium">9:41 PM</span>
-            <div class="flex items-center space-x-1">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
-                </svg>
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M17.778 8.222c-4.296-4.296-11.26-4.296-15.556 0A1 1 0 01.808 6.808c5.076-5.077 13.308-5.077 18.384 0a1 1 0 01-1.414 1.414zM14.95 11.05a7 7 0 00-9.9 0 1 1 0 01-1.414-1.414 9 9 0 0112.728 0 1 1 0 01-1.414 1.414zM12.12 13.88a3 3 0 00-4.242 0 1 1 0 01-1.415-1.415 5 5 0 017.072 0 1 1 0 01-1.415 1.415zM9 16a1 1 0 011-1v0a1 1 0 110 2v0a1 1 0 01-1-1z" clip-rule="evenodd"/>
-                </svg>
-                <svg class="w-6 h-4" fill="currentColor" viewBox="0 0 24 16">
-                    <rect x="1" y="4" width="18" height="8" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <rect x="21" y="7" width="2" height="2" rx="0.5"/>
-                    <rect x="3" y="6" width="14" height="4" rx="1"/>
-                </svg>
-            </div>
-        </div>
+<body>
+    <!-- Background Particles -->
+    <div class="background-particles" id="particles"></div>
+    
+    <!-- Microphone Container -->
+    <div class="mic-container">
+        <button id="micButton" class="mic-button">
+            <svg class="mic-icon" viewBox="0 0 24 24">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+            </svg>
+        </button>
+        <div class="voice-waves" id="voiceWaves"></div>
     </div>
-
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col pt-12 pb-24">
-        <div class="flex-1 max-w-md mx-auto w-full px-6 py-8">
-            <!-- Welcome Text -->
-            <div class="text-center mb-12 fade-in">
-                <p class="text-gray-400 text-sm mb-4">I can help you manage your tasks</p>
-                <h1 class="text-3xl font-bold text-white mb-4">How can I support you today?</h1>
-                <p class="text-gray-300 text-sm leading-relaxed">
-                    Share your task, idea, or goal, and let's get started together.
-                </p>
-            </div>
-
-            <!-- Voice Input Circle -->
-            <div class="flex justify-center mb-12">
-                <div id="voiceCircle" class="voice-circle">
-                    <div class="voice-ring"></div>
-                    <div class="voice-waves"></div>
-                    <button id="voiceBtn" class="relative z-10 w-20 h-20 rounded-full flex items-center justify-center nav-button primary">
-                        <svg id="micIcon" class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Transcription Display -->
-            <div id="transcription" class="mb-8 hidden">
-                <div class="transcript-bubble glass-morphism rounded-2xl p-4">
-                    <div class="flex items-start space-x-3">
-                        <div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <div id="transcriptText" class="text-white"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Task List -->
-            <div id="taskList" class="space-y-3">
-                <div class="text-center py-12 text-gray-500 floating">
-                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                    <p class="text-sm">No tasks yet. Tap the microphone to add your first task.</p>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Bottom Navigation -->
-    <div class="bottom-nav fixed bottom-0 left-0 right-0">
-        <div class="max-w-md mx-auto px-6 py-4">
-            <div class="flex justify-around items-center">
-                <!-- Share/Upload Button -->
-                <button class="nav-button">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                </button>
-
-                <!-- Microphone Button -->
-                <button id="voiceBtnBottom" class="nav-button primary">
-                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                    </svg>
-                </button>
-
-                <!-- Close/Cancel Button -->
-                <button class="nav-button">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-        </div>
+    
+    <!-- Transcription Display -->
+    <div class="transcription" id="transcription">
+        <div class="transcript-text" id="transcriptText"></div>
     </div>
-
+    
     <!-- Toast Notification -->
-    <div id="toast" class="fixed top-20 right-6 glass-morphism text-white px-6 py-3 rounded-2xl transform translate-x-full transition-transform duration-300 z-50">
+    <div class="toast" id="toast">
         <div id="toastMessage"></div>
     </div>
-
-    <script src="app.js"></script>
+    
+    <script src="app-minimal.js"></script>
 </body>
 </html>
