@@ -234,7 +234,7 @@ class VoiceTaskApp {
             const source = this.audioContext.createMediaStreamSource(this.audioStream);
             this.analyser = this.audioContext.createAnalyser();
             this.analyser.fftSize = 64; // Small fft for fast response
-            this.analyser.smoothingTimeConstant = 0.8; // Softer, more fluid animation
+            this.analyser.smoothingTimeConstant = 0.5; // Good balance of speed/smoothness
             source.connect(this.analyser);
 
             const bufferLength = this.analyser.frequencyBinCount;
@@ -296,7 +296,7 @@ class VoiceTaskApp {
             this.recognition.stop();
         }
 
-        const delay = immediate ? 0 : 400;
+        const delay = immediate ? 0 : 3000;
         setTimeout(() => {
             this.transcription.classList.remove('show');
             this.transcriptText.textContent = '';
