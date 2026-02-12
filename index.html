@@ -817,9 +817,14 @@
                             <div class="settings-item-label">Cloud Sync</div>
                             <div class="settings-item-desc" id="syncStatus">Not configured</div>
                         </div>
-                        <div class="settings-toggle" id="toggle-sync"></div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button id="forceSync" class="action-button"
+                                style="padding: 6px 12px; font-size: 9px; background: rgba(74, 222, 128, 0.1); border-color: rgba(74, 222, 128, 0.2); color: #4ade80;">SYNC
+                                NOW</button>
+                            <div class="settings-toggle" id="toggle-sync"></div>
+                        </div>
                     </div>
-                    <input type="password" id="syncUrl" placeholder="https://script.google.com/macros/s/..." style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
+                    <input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
                         border-radius: 12px; padding: 10px; color: white; font-size: 11px; outline: none;">
                 </div>
                 <div class="settings-item">

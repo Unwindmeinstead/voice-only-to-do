@@ -28,10 +28,12 @@ class VoiceTaskApp {
         this.closeSettings = document.getElementById('closeSettings');
         this.syncUrlInput = document.getElementById('syncUrl');
         this.syncStatus = document.getElementById('syncStatus');
+        this.forceSyncBtn = document.getElementById('forceSync');
 
         this.loadSettings();
 
         this.micButton.addEventListener('click', () => this.toggleRecording());
+        this.forceSyncBtn.addEventListener('click', () => this.syncToCloud(true));
         this.closeSettings.addEventListener('click', () => {
             this.saveSettings();
             this.toggleSettings(false);
@@ -367,35 +369,43 @@ class VoiceTaskApp {
         this.syncToCloud();
     }
 
-    async syncToCloud() {
-        const url = this.syncUrlInput.value.trim();
+    async syncToCloud(isManual = false) {
+        let url = this.syncUrlInput.value.trim();
         const isEnabled = document.getElementById('toggle-sync').classList.contains('active');
 
-        if (!url || !isEnabled || !url.startsWith('https://script.google.com')) return;
+        if (!url || (!isEnabled && !isManual)) return;
 
-        this.syncStatus.textContent = 'Syncing...';
+        // Validation for the common mistake of copying the sheet URL instead of script URL
+        if (!url.includes('/macros/s/') || !url.includes('/exec')) {
+            this.syncStatus.textContent = 'Invalid URL (Needs /exec)';
+            this.syncStatus.style.color = '#f87171';
+            return;
+        }
+
+        this.syncStatus.textContent = isManual ? 'Forcing Sync...' : 'Syncing...';
         this.syncStatus.style.color = 'rgba(255,255,255,0.4)';
 
         try {
-            // Using a Blob with text/plain is the "Magic Bullet" for Google Apps Script
-            // It prevents the browser from asking for permission (CORS) but sends the full JSON
-            const blob = new Blob([JSON.stringify(this.tasks)], { type: 'text/plain' });
+            // Simplest possible POST body for Google Apps Script
+            const jsonPayload = JSON.stringify(this.tasks);
 
-            // Add a timestamp to the URL to prevent Google from "caching" old data
-            const syncUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
-
-            fetch(syncUrl, {
+            await fetch(url, {
                 method: 'POST',
-                mode: 'no-cors',
-                body: blob
+                mode: 'no-cors', // Essential for Google Apps Script Web Apps
+                cache: 'no-cache',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8'
+                },
+                body: jsonPayload
             });
 
-            setTimeout(() => {
-                this.syncStatus.textContent = 'Cloud Active';
-                this.syncStatus.style.color = '#4ade80';
-            }, 500);
+            this.syncStatus.textContent = 'Cloud Active';
+            this.syncStatus.style.color = '#4ade80';
+
+            if (isManual) this.showToast('Cloud sync triggered!');
         } catch (error) {
-            this.syncStatus.textContent = 'Connection Error';
+            console.error('Sync error:', error);
+            this.syncStatus.textContent = 'Network Offline';
             this.syncStatus.style.color = '#f87171';
         }
     }
