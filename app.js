@@ -100,6 +100,9 @@ class VoiceTaskApp {
         this.updateDateLabel();
         this.bars = Array.from(document.querySelectorAll('.bar'));
         this.tiltEnabled = false;
+
+        // desktop fallback
+        window.addEventListener('mousemove', (e) => this.handleMouseFollow(e));
     }
 
     createParticles() {
@@ -240,31 +243,42 @@ class VoiceTaskApp {
     }
 
     handleTilt(e) {
-        if (!this.bars || this.bars.length === 0 || this.isRecording) return;
+        if (this.isRecording) return;
+        // Gamma is left/right tilt (-90 to 90)
+        // We normalize a comfortable range (e.g., -30 to 30 degrees)
+        const gamma = e.gamma || 0;
+        const normalized = (gamma + 30) / 60;
+        this.applyBarEffect(normalized);
+    }
 
-        const gamma = e.gamma; // -90 to 90
-        const sensitivity = 20; // degree range
-        const normalized = Math.min(Math.max((gamma + sensitivity) / (sensitivity * 2), 0), 1);
-        const activeIndex = Math.floor(normalized * (this.bars.length - 1));
+    handleMouseFollow(e) {
+        if (this.tiltEnabled || this.isRecording) return;
+        const normalized = e.clientX / window.innerWidth;
+        this.applyBarEffect(normalized);
+    }
+
+    applyBarEffect(normalized) {
+        if (!this.bars || this.bars.length === 0) return;
+
+        const clamped = Math.min(Math.max(normalized, 0), 1);
 
         this.bars.forEach((bar, i) => {
-            const distance = Math.abs(i - activeIndex);
-            if (distance === 0) {
-                bar.style.transform = 'scaleY(2.2)';
-                bar.style.opacity = '1';
-                bar.style.background = '#0a84ff';
-                bar.style.boxShadow = '0 0 15px rgba(10, 132, 255, 0.5)';
-            } else if (distance === 1) {
-                bar.style.transform = 'scaleY(1.4)';
-                bar.style.opacity = '0.8';
-                bar.style.background = 'rgba(255,255,255,0.5)';
-                bar.style.boxShadow = 'none';
-            } else {
-                bar.style.transform = '';
-                bar.style.opacity = '';
-                bar.style.background = '';
-                bar.style.boxShadow = 'none';
-            }
+            const barPos = i / (this.bars.length - 1);
+            const dist = Math.abs(barPos - clamped);
+            const power = Math.max(0, 1 - dist * 2.5); // Sharpness of the wave
+
+            // Premium liquid motion styles
+            const scale = 1 + (power * 2.2);
+            const hue = 200 + (clamped * 60); // Adaptive color shift
+
+            bar.style.transform = `scaleY(${scale})`;
+            bar.style.background = power > 0.1
+                ? `hsla(${hue}, 90%, 65%, ${0.4 + power * 0.6})`
+                : '#000000';
+            bar.style.boxShadow = power > 0.6
+                ? `0 0 ${power * 15}px hsla(${hue}, 90%, 65%, 0.5)`
+                : 'none';
+            bar.style.opacity = 0.3 + (power * 0.7);
         });
     }
 

@@ -98,6 +98,13 @@ class VoiceTaskApp {
 
         this.createParticles();
         this.updateDateLabel();
+
+        // Equalizer Bars for Tilt Effect
+        this.bars = Array.from(this.micButton.querySelectorAll('.bar'));
+        this.tiltEnabled = false;
+
+        // Desktop fallback: mouse follow
+        window.addEventListener('mousemove', (e) => this.handleMouseFollow(e));
     }
 
     createParticles() {
@@ -207,6 +214,11 @@ class VoiceTaskApp {
     }
 
     toggleRecording() {
+        // Request Gyro permission on first interaction (iOS requirement)
+        if (!this.tiltEnabled) {
+            this.requestTiltPermission();
+        }
+
         if (this.isRecording) {
             this.stopRecording();
         } else {
@@ -214,7 +226,74 @@ class VoiceTaskApp {
         }
     }
 
+    async requestTiltPermission() {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            try {
+                const state = await DeviceOrientationEvent.requestPermission();
+                if (state === 'granted') {
+                    this.initTilt();
+                }
+            } catch (e) { console.error('Tilt permission denied:', e); }
+        } else {
+            this.initTilt();
+        }
+    }
+
+    initTilt() {
+        this.tiltEnabled = true;
+        window.addEventListener('deviceorientation', (e) => this.handleTilt(e));
+    }
+
+    handleTilt(e) {
+        if (this.isRecording) return;
+        // Gamma is left/right tilt (-90 to 90)
+        // We normalize a comfortable range (e.g., -30 to 30 degrees)
+        const gamma = e.gamma || 0;
+        const normalized = (gamma + 30) / 60;
+        this.applyBarEffect(normalized);
+    }
+
+    handleMouseFollow(e) {
+        if (this.tiltEnabled || this.isRecording) return;
+        const normalized = e.clientX / window.innerWidth;
+        this.applyBarEffect(normalized);
+    }
+
+    applyBarEffect(normalized) {
+        if (!this.bars || this.bars.length === 0) return;
+
+        const clamped = Math.min(Math.max(normalized, 0), 1);
+
+        this.bars.forEach((bar, i) => {
+            const barPos = i / (this.bars.length - 1);
+            const dist = Math.abs(barPos - clamped);
+            const power = Math.max(0, 1 - dist * 2.5); // Sharpness of the wave
+
+            // Premium liquid motion styles
+            const scale = 1 + (power * 2.2);
+            const hue = 200 + (clamped * 60); // Adaptive color shift
+
+            bar.style.transform = `scaleY(${scale})`;
+            bar.style.background = power > 0.1
+                ? `hsla(${hue}, 90%, 65%, ${0.4 + power * 0.6})`
+                : '#000000';
+            bar.style.boxShadow = power > 0.6
+                ? `0 0 ${power * 15}px hsla(${hue}, 90%, 65%, 0.5)`
+                : 'none';
+            bar.style.opacity = 0.3 + (power * 0.7);
+        });
+    }
+
     startRecording() {
+        // Reset tilt styles when recording starts to let CSS animations take over
+        if (this.bars) {
+            this.bars.forEach(bar => {
+                bar.style.transform = '';
+                bar.style.background = '';
+                bar.style.boxShadow = '';
+                bar.style.opacity = '';
+            });
+        }
         if (this.recognition) {
             this.recognition.start();
         }
@@ -323,6 +402,14 @@ class VoiceTaskApp {
 
     triggerSuccessAnimation() {
         if (!this.micButton) return;
+        if (this.bars) {
+            this.bars.forEach(bar => {
+                bar.style.transform = '';
+                bar.style.background = '';
+                bar.style.boxShadow = '';
+                bar.style.opacity = '';
+            });
+        }
         this.micButton.classList.add('success');
         setTimeout(() => {
             this.micButton.classList.remove('success');
