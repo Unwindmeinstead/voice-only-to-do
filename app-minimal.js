@@ -370,24 +370,25 @@ class VoiceTaskApp {
         this.syncStatus.style.color = 'rgba(255,255,255,0.4)';
 
         try {
-            // Using URLSearchParams + no-cors is the most reliable "bridge" for Apps Script
-            const params = new URLSearchParams();
-            params.append('data', JSON.stringify(this.tasks));
+            // Using a Blob with text/plain is the "Magic Bullet" for Google Apps Script
+            // It prevents the browser from asking for permission (CORS) but sends the full JSON
+            const blob = new Blob([JSON.stringify(this.tasks)], { type: 'text/plain' });
 
-            fetch(url, {
+            // Add a timestamp to the URL to prevent Google from "caching" old data
+            const syncUrl = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+
+            fetch(syncUrl, {
                 method: 'POST',
                 mode: 'no-cors',
-                cache: 'no-cache',
-                body: params
+                body: blob
             });
 
             setTimeout(() => {
                 this.syncStatus.textContent = 'Cloud Active';
                 this.syncStatus.style.color = '#4ade80';
-            }, 800);
+            }, 500);
         } catch (error) {
-            console.error('Network error during sync:', error);
-            this.syncStatus.textContent = 'Network Error';
+            this.syncStatus.textContent = 'Connection Error';
             this.syncStatus.style.color = '#f87171';
         }
     }
