@@ -664,17 +664,38 @@ class VoiceTaskApp {
         }
     }
 
-    renderCalendar() {
+    renderCalendar(selectedDate = new Date()) {
         if (!this.calendarGrid || !this.calendarHeader) return;
         this.calendarGrid.innerHTML = '';
+        const dayTasksList = document.getElementById('dayTasksList');
+        const dayDetailsTitle = document.getElementById('dayDetailsTitle');
 
+        const year = selectedDate.getFullYear();
+        const month = selectedDate.getMonth();
         const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
 
         // Premium Header (e.g. "February 2026")
-        const monthName = now.toLocaleString('default', { month: 'long' });
-        this.calendarHeader.textContent = `${monthName} ${year}`;
+        const monthName = selectedDate.toLocaleString('default', { month: 'long' });
+        this.calendarHeader.innerHTML = `
+            <span>${monthName} ${year}</span>
+            <div style="display: flex; gap: 10px;">
+                <button id="prevMonth" style="background:none; border:none; color:white; cursor:pointer; padding:5px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <button id="nextMonth" style="background:none; border:none; color:white; cursor:pointer; padding:5px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+            </div>
+        `;
+
+        document.getElementById('prevMonth').onclick = (e) => {
+            e.stopPropagation();
+            this.renderCalendar(new Date(year, month - 1, 1));
+        };
+        document.getElementById('nextMonth').onclick = (e) => {
+            e.stopPropagation();
+            this.renderCalendar(new Date(year, month + 1, 1));
+        };
 
         // Header weekdays
         ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
@@ -699,20 +720,44 @@ class VoiceTaskApp {
         for (let d = 1; d <= daysInMonth; d++) {
             const dayEl = document.createElement('div');
             const isToday = d === now.getDate() && month === now.getMonth() && year === now.getFullYear();
-            dayEl.className = `calendar-day ${isToday ? 'today' : ''}`;
 
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const hasTasks = this.tasks.some(t => t.createdAt.startsWith(dateStr));
+            const tasksOnDay = this.tasks.filter(t => t.createdAt.startsWith(dateStr));
 
+            dayEl.className = `calendar-day ${isToday ? 'today' : ''}`;
             dayEl.innerHTML = `
                 <span>${d}</span>
-                ${hasTasks ? '<div class="calendar-dot"></div>' : ''}
+                ${tasksOnDay.length > 0 ? '<div class="calendar-dot"></div>' : ''}
             `;
 
-            // Add iOS Haptic-like feedback on tap
-            dayEl.addEventListener('click', () => {
+            dayEl.onclick = () => {
+                // Remove previous selection
+                document.querySelectorAll('.calendar-day').forEach(el => el.classList.remove('selected'));
+                dayEl.classList.add('selected');
+
+                // Update Details
+                const displayDate = new Date(year, month, d).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+                dayDetailsTitle.textContent = displayDate;
+
+                dayTasksList.innerHTML = tasksOnDay.length > 0
+                    ? tasksOnDay.map(t => {
+                        const color = t.type === 'event' ? '#0a84ff' : (t.type === 'notification' ? '#fbbf24' : '#4ade80');
+                        return `
+                            <div class="day-task-item">
+                                <div class="day-task-bullet" style="background: ${color}"></div>
+                                <div class="day-task-text">${this.escapeHtml(t.text)}</div>
+                            </div>
+                        `;
+                    }).join('')
+                    : '<div style="opacity: 0.3; font-style: italic; padding: 20px; text-align: center;">No tasks for this day</div>';
+
                 if ('vibrate' in navigator) navigator.vibrate(10);
-            });
+            };
+
+            // Select today by default on first load
+            if (isToday) {
+                setTimeout(() => dayEl.click(), 0);
+            }
 
             this.calendarGrid.appendChild(dayEl);
         }
