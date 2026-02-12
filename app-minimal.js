@@ -98,6 +98,9 @@ class VoiceTaskApp {
 
         this.createParticles();
         this.updateDateLabel();
+        this.bars = Array.from(this.micButton.querySelectorAll('.bar'));
+        this.audioStream = null;
+        this.visualizerId = null;
     }
 
     createParticles() {
@@ -217,6 +220,51 @@ class VoiceTaskApp {
     startRecording() {
         if (this.recognition) {
             this.recognition.start();
+            this.startVisualizer();
+        }
+    }
+
+    async startVisualizer() {
+        try {
+            if (!this.audioContext) await this.initializeAudioContext();
+            if (this.audioContext.state === 'suspended') await this.audioContext.resume();
+
+            this.audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = this.audioContext.createMediaStreamSource(this.audioStream);
+            this.analyser = this.audioContext.createAnalyser();
+            this.analyser.fftSize = 64;
+            this.analyser.smoothingTimeConstant = 0.5;
+            source.connect(this.analyser);
+
+            const bufferLength = this.analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            const draw = () => {
+                if (!this.isRecording) return;
+                this.visualizerId = requestAnimationFrame(draw);
+
+                this.analyser.getByteFrequencyData(dataArray);
+
+                for (let i = 0; i < this.bars.length; i++) {
+                    const bar = this.bars[i];
+                    const sampleIndex = Math.floor((i / this.bars.length) * bufferLength);
+                    const value = dataArray[sampleIndex];
+
+                    const height = 8 + (value / 255) * 32;
+                    bar.style.height = `${height}px`;
+
+                    if (value > 120) {
+                        bar.style.background = '#0a84ff';
+                        bar.style.opacity = '1';
+                    } else {
+                        bar.style.background = '#000000';
+                        bar.style.opacity = '0.6';
+                    }
+                }
+            };
+            draw();
+        } catch (err) {
+            console.error('Mic Visualizer failed:', err);
         }
     }
 
@@ -224,6 +272,25 @@ class VoiceTaskApp {
         this.isRecording = false;
         this.updateRecordingUI(false);
         this.playPop && this.playPop();
+
+        if (this.visualizerId) {
+            cancelAnimationFrame(this.visualizerId);
+            this.visualizerId = null;
+        }
+
+        if (this.audioStream) {
+            this.audioStream.getTracks().forEach(track => track.stop());
+            this.audioStream = null;
+        }
+
+        if (this.bars) {
+            const defaults = [6, 10, 16, 10, 6];
+            this.bars.forEach((bar, i) => {
+                bar.style.height = `${defaults[i]}px`;
+                bar.style.background = '';
+                bar.style.opacity = '';
+            });
+        }
 
         if (this.recognition) {
             this.recognition.stop();
