@@ -811,12 +811,16 @@
                     </div>
                     <div class="settings-toggle active" id="toggle-dark-mode"></div>
                 </div>
-                <div class="settings-item">
-                    <div>
-                        <div class="settings-item-label">Cloud Sync</div>
-                        <div class="settings-item-desc">Real-time backup</div>
+                <div class="settings-item" style="flex-direction: column; align-items: flex-start; gap: 12px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <div>
+                            <div class="settings-item-label">Cloud Sync</div>
+                            <div class="settings-item-desc" id="syncStatus">Not configured</div>
+                        </div>
+                        <div class="settings-toggle" id="toggle-sync"></div>
                     </div>
-                    <div class="settings-toggle" id="toggle-sync"></div>
+                    <input type="password" id="syncUrl" placeholder="https://script.google.com/macros/s/..." style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
+                        border-radius: 12px; padding: 10px; color: white; font-size: 11px; outline: none;">
                 </div>
                 <div class="settings-item">
                     <div>

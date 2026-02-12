@@ -26,9 +26,16 @@ class VoiceTaskApp {
         this.dateLabel = document.getElementById('dateLabel');
         this.settingsModal = document.getElementById('settingsModal');
         this.closeSettings = document.getElementById('closeSettings');
+        this.syncUrlInput = document.getElementById('syncUrl');
+        this.syncStatus = document.getElementById('syncStatus');
+
+        this.loadSettings();
 
         this.micButton.addEventListener('click', () => this.toggleRecording());
-        this.closeSettings.addEventListener('click', () => this.toggleSettings(false));
+        this.closeSettings.addEventListener('click', () => {
+            this.saveSettings();
+            this.toggleSettings(false);
+        });
 
         // Settings interactivity
         document.querySelectorAll('.settings-toggle').forEach(toggle => {
@@ -348,6 +355,51 @@ class VoiceTaskApp {
 
     saveTasks() {
         localStorage.setItem('voiceTasks', JSON.stringify(this.tasks));
+        this.syncToCloud();
+    }
+
+    async syncToCloud() {
+        const url = this.syncUrlInput.value.trim();
+        const isEnabled = document.getElementById('toggle-sync').classList.contains('active');
+
+        if (!url || !isEnabled) return;
+
+        this.syncStatus.textContent = 'Syncing...';
+        this.syncStatus.style.color = 'rgba(255,255,255,0.4)';
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                mode: 'no-cors', // Apps Script requires this for direct browser POST
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.tasks)
+            });
+
+            this.syncStatus.textContent = 'Synced to Cloud';
+            this.syncStatus.style.color = '#4ade80';
+        } catch (error) {
+            console.error('Sync failed:', error);
+            this.syncStatus.textContent = 'Sync failed';
+            this.syncStatus.style.color = '#f87171';
+        }
+    }
+
+    saveSettings() {
+        localStorage.setItem('doneSettings', JSON.stringify({
+            syncUrl: this.syncUrlInput.value,
+            syncEnabled: document.getElementById('toggle-sync').classList.contains('active')
+        }));
+    }
+
+    loadSettings() {
+        const saved = localStorage.getItem('doneSettings');
+        if (saved) {
+            const settings = JSON.parse(saved);
+            this.syncUrlInput.value = settings.syncUrl || '';
+            if (settings.syncEnabled) {
+                document.getElementById('toggle-sync').classList.add('active');
+            }
+        }
     }
 
     loadTasks() {
