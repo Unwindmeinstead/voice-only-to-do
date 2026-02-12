@@ -5,11 +5,39 @@ class VoiceTaskApp {
         this.recognition = null;
         this.playBeep = null;
 
+        this.initializeLocalization();
         this.initializeElements();
         this.initializeSpeechRecognition();
         this.initializeAudioContext();
         this.renderTasks();
         this.initializePWA();
+    }
+
+    initializeLocalization() {
+        this.activeLang = 'en-US';
+        this.locales = {
+            'en-US': {
+                add: ['add task', 'add', 'create', 'new task'],
+                complete: ['complete', 'done', 'finish', 'mark as done'],
+                delete: ['delete', 'remove', 'trash'],
+                settings: ['open settings', 'show settings', 'settings'],
+                clear: ['clear completed', 'clear done']
+            },
+            'hi-IN': {
+                add: ['जोड़ें', 'टास्क जोड़ें', 'बनाएं', 'नया टास्क'],
+                complete: ['पूरा करें', 'खत्म', 'हो गया', 'पूर्ण'],
+                delete: ['हटाएं', 'मिटाएं', 'डिलीट'],
+                settings: ['सेटिंग्स खोलें', 'सेटिंग्स', 'सेटिंग'],
+                clear: ['पूरा किया हुआ हटाएं', 'साफ करें']
+            },
+            'ne-NP': {
+                add: ['थप्नुहोस्', 'टास्क थप्नुहोस्', 'बनाउनुहोस्', 'नयाँ'],
+                complete: ['सकियो', 'समाप्त', 'भयो', 'पुरा भयो'],
+                delete: ['हटाउनुहोस्', 'मेट्नुहोस्', 'डिलीट'],
+                settings: ['सेटिङ्स', 'सेटिङ खोल्नुहोस्', 'सेटिङ'],
+                clear: ['सकिएको हटाउनुहोस्', 'साफ गर्नुहोस्']
+            }
+        };
     }
 
     initializeElements() {
@@ -38,9 +66,10 @@ class VoiceTaskApp {
         });
 
         this.langSelect.addEventListener('change', (e) => {
+            this.activeLang = e.target.value;
             if (this.recognition) {
-                this.recognition.lang = e.target.value;
-                this.showToast(`Language set to ${e.target.options[e.target.selectedIndex].text}`);
+                this.recognition.lang = this.activeLang;
+                this.showToast(`Recognition: ${e.target.options[e.target.selectedIndex].text}`);
             }
         });
 
@@ -205,50 +234,56 @@ class VoiceTaskApp {
     }
 
     processVoiceCommand(transcript) {
-        const command = transcript.toLowerCase().trim();
+        const text = transcript.toLowerCase().trim();
+        const lang = this.activeLang;
+        const cmd = this.locales[lang] || this.locales['en-US'];
 
-        // Add task commands
-        if (command.startsWith('add task') || command.startsWith('add') || command.startsWith('create')) {
-            const taskText = command.replace(/^(add task|add|create)\s+/i, '').trim();
-            if (taskText) {
-                this.addTask(taskText);
-                return;
+        // Helper to check if text starts with any of the keywords
+        const getPayload = (keywords) => {
+            for (const kw of keywords) {
+                if (text.startsWith(kw)) {
+                    return text.slice(kw.length).trim();
+                }
             }
+            return null;
+        };
+
+        // Add
+        const addText = getPayload(cmd.add);
+        if (addText) {
+            this.addTask(addText);
+            return;
         }
 
-        // Complete task commands
-        if (command.startsWith('complete') || command.startsWith('done') || command.startsWith('finish')) {
-            const taskText = command.replace(/^(complete|done|finish)\s+/i, '').trim();
-            if (taskText) {
-                this.completeTask(taskText);
-                return;
-            }
+        // Complete
+        const compText = getPayload(cmd.complete);
+        if (compText) {
+            this.completeTask(compText);
+            return;
         }
 
-        // Delete task commands
-        if (command.startsWith('delete') || command.startsWith('remove')) {
-            const taskText = command.replace(/^(delete|remove)\s+/i, '').trim();
-            if (taskText) {
-                this.deleteTask(taskText);
-                return;
-            }
+        // Delete
+        const delText = getPayload(cmd.delete);
+        if (delText) {
+            this.deleteTask(delText);
+            return;
         }
 
-        // Open settings commands
-        if (command.includes('open settings') || command.includes('show settings') || command.includes('go to settings')) {
+        // Settings (uses includes for better flexibility)
+        if (cmd.settings.some(s => text.includes(s))) {
             this.toggleSettings(true);
             this.stopRecording(true);
             return;
         }
 
-        // Clear completed tasks
-        if (command.includes('clear completed') || command.includes('clear done')) {
+        // Clear
+        if (cmd.clear.some(c => text.includes(c))) {
             this.clearCompletedTasks();
             return;
         }
 
-        // If no specific command, treat as add task
-        if (command.length > 0) {
+        // If no specific command, treat as search/add
+        if (text.length > 2) {
             this.addTask(transcript);
         }
     }
