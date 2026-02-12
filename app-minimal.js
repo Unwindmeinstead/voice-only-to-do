@@ -5,7 +5,6 @@ class VoiceTaskApp {
         this.recognition = null;
         this.playBeep = null;
 
-        this.initializeLocalization();
         this.initializeElements();
         this.initializeSpeechRecognition();
         this.initializeAudioContext();
@@ -13,32 +12,6 @@ class VoiceTaskApp {
         this.initializePWA();
     }
 
-    initializeLocalization() {
-        this.activeLang = 'en-US';
-        this.locales = {
-            'en-US': {
-                add: ['add task', 'add', 'create', 'new task'],
-                complete: ['complete', 'done', 'finish', 'mark as done', 'completed'],
-                delete: ['delete', 'remove', 'trash', 'delete task'],
-                settings: ['open settings', 'show settings', 'settings', 'config'],
-                clear: ['clear completed', 'clear done', 'clear all']
-            },
-            'hi-IN': {
-                add: ['जोड़ें', 'टास्क जोड़ें', 'बनाएं', 'नया टास्क', 'डालें', 'लिखें'],
-                complete: ['पूरा करें', 'खत्म', 'हो गया', 'पूर्ण', 'टिक करें', 'पूरा'],
-                delete: ['हटाएं', 'मिटाएं', 'डिलीट', 'निकाले'],
-                settings: ['सेटिंग्स खोलें', 'सेटिंग्स', 'सेटिंग', 'विकल्प'],
-                clear: ['पूरा किया हुआ हटाएं', 'साफ करें', 'सब हटाएं']
-            },
-            'ne-NP': {
-                add: ['थप्नुहोस्', 'टास्क थप्नुहोस्', 'बनाउनुहोस्', 'नयाँ', 'लेख्नुहोस्', 'थप'],
-                complete: ['सकियो', 'समाप्त', 'भयो', 'पुरा भयो', 'टिक गर्नुहोस्', 'सक्यो'],
-                delete: ['हटाउनुहोस्', 'मेट्नुहोस्', 'डिलीट', 'फ्याल्नुहोस्'],
-                settings: ['सेटिङ्स', 'सेटिङ खोल्नुहोस्', 'सेटिङ', 'विकल्प'],
-                clear: ['सकिएको हटाउनुहोस्', 'साफ गर्नुहोस्', 'सबै हटाउनुहोस्']
-            }
-        };
-    }
 
     initializeElements() {
         this.micButton = document.getElementById('micButton');
@@ -52,7 +25,6 @@ class VoiceTaskApp {
         this.dateLabel = document.getElementById('dateLabel');
         this.settingsModal = document.getElementById('settingsModal');
         this.closeSettings = document.getElementById('closeSettings');
-        this.langSelect = document.getElementById('langSelect');
 
         this.micButton.addEventListener('click', () => this.toggleRecording());
         this.closeSettings.addEventListener('click', () => this.toggleSettings(false));
@@ -63,14 +35,6 @@ class VoiceTaskApp {
                 toggle.classList.toggle('active');
                 this.playPing && this.playPing();
             });
-        });
-
-        this.langSelect.addEventListener('change', (e) => {
-            this.activeLang = e.target.value;
-            if (this.recognition) {
-                this.recognition.lang = this.activeLang;
-                this.showToast(`Recognition: ${e.target.options[e.target.selectedIndex].text}`);
-            }
         });
 
         // Close modal on click outside
@@ -235,64 +199,52 @@ class VoiceTaskApp {
 
     processVoiceCommand(transcript) {
         const text = transcript.toLowerCase().trim();
-        const lang = this.activeLang;
-        const cmd = this.locales[lang] || this.locales['en-US'];
 
-        // Helper to check if text starts or ends with any of the keywords
-        // Optimized for SOV (Subject-Object-Verb) languages like Hindi/Nepali
-        const getPayload = (keywords) => {
-            const lowerText = text.toLowerCase();
-            for (const kw of keywords) {
-                const lowerKw = kw.toLowerCase();
-                // Check Prefix (English style)
-                if (lowerText.startsWith(lowerKw)) {
-                    return text.slice(kw.length).trim();
-                }
-                // Check Suffix (Hindi/Nepali style)
-                if (lowerText.endsWith(lowerKw)) {
-                    return text.slice(0, text.length - kw.length).trim();
-                }
-            }
-            return null;
-        };
-
-        // Add
-        const addText = getPayload(cmd.add);
-        if (addText) {
-            this.addTask(addText);
-            return;
-        }
-
-        // Complete
-        const compText = getPayload(cmd.complete);
-        if (compText) {
-            this.completeTask(compText);
-            return;
-        }
-
-        // Delete
-        const delText = getPayload(cmd.delete);
-        if (delText) {
-            this.deleteTask(delText);
-            return;
-        }
-
-        // Settings (uses includes for better flexibility)
-        if (cmd.settings.some(s => text.includes(s))) {
+        // Settings (Universal)
+        if (text.includes('settings') || text.includes('config')) {
             this.toggleSettings(true);
             this.stopRecording(true);
             return;
         }
 
-        // Clear
-        if (cmd.clear.some(c => text.includes(c))) {
-            this.clearCompletedTasks();
-            return;
+        // Completion logic
+        const completeKeywords = ['complete', 'done', 'finish', 'check off'];
+        for (const kw of completeKeywords) {
+            if (text.startsWith(kw)) {
+                const taskText = text.replace(kw, '').trim();
+                if (taskText) {
+                    this.completeTask(taskText);
+                    return;
+                }
+            }
         }
 
-        // If no specific command, treat as search/add
-        if (text.length > 2) {
-            this.addTask(transcript);
+        // Deletion logic
+        const deleteKeywords = ['delete', 'remove', 'trash', 'remove task'];
+        for (const kw of deleteKeywords) {
+            if (text.startsWith(kw)) {
+                const taskText = text.replace(kw, '').trim();
+                if (taskText) {
+                    this.deleteTask(taskText);
+                    return;
+                }
+            }
+        }
+
+        // Add task (Default)
+        // Clean up common "add" prefixes if present
+        const addPrefixes = ['add task', 'add', 'create', 'new task'];
+        let finalTask = text;
+        for (const pre of addPrefixes) {
+            if (text.startsWith(pre)) {
+                finalTask = text.replace(pre, '').trim();
+                break;
+            }
+        }
+
+        if (finalTask.length > 0) {
+            this.addTask(finalTask);
+            this.stopRecording(true);
         }
     }
 
