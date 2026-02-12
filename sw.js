@@ -1,14 +1,15 @@
-const CACHE_NAME = 'voice-task-v1';
+const CACHE_NAME = 'voice-task-v2.3.0';
 const urlsToCache = [
     '/',
     '/index.html',
+    '/app.js',
     '/manifest.json',
-    'https://cdn.tailwindcss.com',
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
 ];
 
 // Install event
 self.addEventListener('install', event => {
+    self.skipWaiting(); // Force update
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
@@ -19,13 +20,9 @@ self.addEventListener('install', event => {
 
 // Fetch event
 self.addEventListener('fetch', event => {
+    // Strategy: Network first, fallback to cache for better update experience
     event.respondWith(
-        caches.match(event.request)
-            .then(response => {
-                // Return cached version or fetch from network
-                return response || fetch(event.request);
-            }
-        )
+        fetch(event.request).catch(() => caches.match(event.request))
     );
 });
 
@@ -40,6 +37,6 @@ self.addEventListener('activate', event => {
                     }
                 })
             );
-        })
+        }).then(() => self.clients.claim())
     );
 });
