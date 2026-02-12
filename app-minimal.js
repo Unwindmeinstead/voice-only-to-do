@@ -24,9 +24,25 @@ class VoiceTaskApp {
         this.dateLabel = document.getElementById('dateLabel');
         this.settingsModal = document.getElementById('settingsModal');
         this.closeSettings = document.getElementById('closeSettings');
+        this.langSelect = document.getElementById('langSelect');
 
         this.micButton.addEventListener('click', () => this.toggleRecording());
         this.closeSettings.addEventListener('click', () => this.toggleSettings(false));
+
+        // Settings interactivity
+        document.querySelectorAll('.settings-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                toggle.classList.toggle('active');
+                this.playPing && this.playPing();
+            });
+        });
+
+        this.langSelect.addEventListener('change', (e) => {
+            if (this.recognition) {
+                this.recognition.lang = e.target.value;
+                this.showToast(`Language set to ${e.target.options[e.target.selectedIndex].text}`);
+            }
+        });
 
         // Close modal on click outside
         this.settingsModal.addEventListener('click', (e) => {

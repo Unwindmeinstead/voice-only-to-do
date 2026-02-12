@@ -598,22 +598,94 @@
         .settings-list {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .settings-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .settings-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
         }
 
         .settings-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 24px;
+            padding: 18px 24px;
             background: rgba(255, 255, 255, 0.02);
-            border-radius: 28px;
+            border-radius: 24px;
             border: 1px solid rgba(255, 255, 255, 0.02);
-            transition: background 0.2s ease;
+            transition: all 0.2s ease;
         }
 
         .settings-item:hover {
             background: rgba(255, 255, 255, 0.04);
+        }
+
+        .settings-toggle {
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 99px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .settings-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: #ffffff;
+            border-radius: 99px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .settings-toggle.active {
+            background: #ffffff;
+        }
+
+        .settings-toggle.active::after {
+            left: 22px;
+            background: #000000;
+        }
+
+        .language-select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border-radius: 12px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-family: 'Poppins', sans-serif;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .action-button {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .action-button:hover {
+            background: #ffffff;
+            color: #000000;
         }
 
         .settings-item-label {
@@ -712,23 +784,46 @@
             <div class="settings-list">
                 <div class="settings-item">
                     <div>
-                        <div class="settings-item-label">Voice Feedback</div>
-                        <div class="settings-item-desc">High-fidelity audio cues</div>
+                        <div class="settings-item-label">Dark Mode</div>
+                        <div class="settings-item-desc">System optimized theme</div>
                     </div>
-                    <div class="settings-status">Active</div>
+                    <div class="settings-toggle active" id="toggle-dark-mode"></div>
                 </div>
                 <div class="settings-item">
                     <div>
                         <div class="settings-item-label">Cloud Sync</div>
-                        <div class="settings-item-desc">Secure end-to-end backup</div>
+                        <div class="settings-item-desc">Real-time backup</div>
                     </div>
-                    <div class="settings-status">Online</div>
+                    <div class="settings-toggle" id="toggle-sync"></div>
                 </div>
-                <div class="settings-item" style="opacity: 0.6;">
+                <div class="settings-item">
                     <div>
-                        <div class="settings-item-label">App Model</div>
-                        <div class="settings-item-desc">v2.1.0-ultra</div>
+                        <div class="settings-item-label">App Language</div>
+                        <div class="settings-item-desc">Voice recognition peak</div>
                     </div>
+                    <select class="language-select" id="langSelect">
+                        <option value="en-US">English</option>
+                        <option value="hi-IN">Hindi</option>
+                        <option value="ne-NP">Nepali</option>
+                    </select>
+                </div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label">Export Data</div>
+                        <div class="settings-item-desc">Download task manifest</div>
+                    </div>
+                    <button class="action-button">EXPORT</button>
+                </div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label">Local Backup</div>
+                        <div class="settings-item-desc">Save to device storage</div>
+                    </div>
+                    <button class="action-button">SAVE</button>
+                </div>
+                <div class="settings-item"
+                    style="border: none; background: none; opacity: 0.4; justify-content: center;">
+                    <span style="font-size: 11px; letter-spacing: 0.2em;">VERSION 2.1.0-ULTRA</span>
                 </div>
             </div>
         </div>
