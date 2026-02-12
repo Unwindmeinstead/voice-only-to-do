@@ -17,15 +17,14 @@ class VoiceTaskApp {
         // Expose instance for global callbacks (like Google Auth)
         window.app = this;
 
-        // Initial sync from cloud if logged in
+        // Initial backup to cloud if logged in
         if (this.user && this.syncUrlInput.value) {
-            this.pullFromCloud();
+            this.syncToCloud();
         }
 
-        // Start background heart-beat sync (every 5 minutes)
+        // Start background heart-beat backup (every 5 minutes)
         setInterval(() => this.syncToCloud(), 300000);
     }
-
 
     initializeElements() {
         this.micButton = document.getElementById('micButton');
@@ -102,6 +101,7 @@ class VoiceTaskApp {
     }
 
     createParticles() {
+        if (!this.particles) return;
         for (let i = 0; i < 50; i++) {
             const particle = document.createElement('div');
             particle.className = 'particle';
@@ -329,18 +329,6 @@ class VoiceTaskApp {
         }, 1500);
     }
 
-    completeTask(text) {
-        const query = text.toLowerCase();
-        const task = this.tasks.find(t => t.text.toLowerCase().includes(query));
-        if (task) {
-            task.completed = !task.completed;
-            this.logHistory(task.completed ? 'COMPLETED' : 'REOPENED', task);
-            this.saveTasks();
-            this.renderTasks();
-            this.showToast(`Task ${task.completed ? 'completed' : 'unmarked'}`);
-        }
-    }
-
     editTask(id) {
         this.editingTaskId = id;
         this.renderTasks(); // Highlight editing state
@@ -360,35 +348,8 @@ class VoiceTaskApp {
         }
     }
 
-    deleteTask(taskText) {
-        const taskIndex = this.tasks.findIndex(t =>
-            t.text.toLowerCase().includes(taskText.toLowerCase())
-        );
-
-        if (taskIndex !== -1) {
-            const deletedTask = this.tasks.splice(taskIndex, 1)[0];
-            this.logHistory('DELETED', deletedTask);
-            this.saveTasks();
-            this.renderTasks();
-            this.showToast(`Deleted: ${deletedTask.text}`);
-        } else {
-            this.showToast(`Not found: ${taskText}`);
-        }
-    }
-
-    clearCompletedTasks() {
-        const completedCount = this.tasks.filter(t => t.completed).length;
-        if (completedCount > 0) {
-            this.tasks = this.tasks.filter(t => !t.completed);
-            this.saveTasks();
-            this.renderTasks();
-            this.showToast(`Cleared ${completedCount} completed task${completedCount > 1 ? 's' : ''}`);
-        } else {
-            this.showToast('No completed tasks to clear');
-        }
-    }
-
     showToast(message) {
+        if (!this.toastMessage || !this.toast) return;
         this.toastMessage.textContent = message;
         this.toast.classList.add('show');
 
@@ -427,52 +388,16 @@ class VoiceTaskApp {
             return;
         }
 
-        this.syncStatus.textContent = isManual ? 'Syncing...' : 'Cloud Active';
+        this.syncStatus.textContent = isManual ? 'Backing up...' : 'Cloud Active';
 
         try {
-            // 1. PULL & RECONCILE: Get latest from other devices
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data && data.tasks) {
-                const cloudTasks = data.tasks;
-
-                // Create a map of tasks by ID for reconciliation
-                const taskMap = new Map();
-
-                // Add local tasks first
-                this.tasks.forEach(t => taskMap.set(t.id, t));
-
-                // Overlay cloud tasks (Last State Wins)
-                cloudTasks.forEach(cloudTask => {
-                    const localTask = taskMap.get(cloudTask.id);
-                    if (!localTask) {
-                        // Brand new task from another device
-                        taskMap.set(cloudTask.id, cloudTask);
-                    } else {
-                        // Sync status: If cloud says it's completed, it is. 
-                        // If local says it's completed, we'll push that later in Step 2.
-                        if (cloudTask.completed !== localTask.completed) {
-                            localTask.completed = cloudTask.completed;
-                        }
-                    }
-                });
-
-                // Update local list from reconciled map
-                this.tasks = Array.from(taskMap.values());
-                this.tasks.sort((a, b) => b.id - a.id);
-                this.renderTasks();
-                this.saveTasks(); // Persist reconciled state
-            }
-
-            // 2. PUSH SECOND: Upload the fully merged state
+            // DIRECT PUSH: Single device focus, simply upload current state
             const params = new URLSearchParams();
             params.append('payload', JSON.stringify({
                 tasks: this.tasks,
                 history: this.history
             }));
 
-            // Use POST to update the cloud with the merged data
             await fetch(url, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -481,11 +406,11 @@ class VoiceTaskApp {
 
             this.syncStatus.textContent = 'Synced';
             this.syncStatus.style.color = '#4ade80';
-            if (isManual) this.showToast('All devices in sync!');
+            if (isManual) this.showToast('Cloud backup complete!');
 
         } catch (error) {
-            console.error('Sync failed:', error);
-            this.syncStatus.textContent = 'Connection Issue';
+            console.error('Backup failed:', error);
+            this.syncStatus.textContent = 'Backup paused';
             this.syncStatus.style.color = '#f87171';
         }
     }
@@ -501,37 +426,6 @@ class VoiceTaskApp {
         }));
 
         this.updateSyncStatus();
-    }
-
-    async pullFromCloud() {
-        const url = this.syncUrlInput.value.trim();
-        if (!url || !url.includes('/exec')) return;
-
-        try {
-            this.syncStatus.textContent = 'Updating...';
-            // GET request to retrieve data
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data && data.tasks) {
-                // Simple merge: prefer newer IDs (timestamp based)
-                const cloudTasks = data.tasks;
-                const localIds = new Set(this.tasks.map(t => t.id));
-                const newTasks = cloudTasks.filter(t => !localIds.has(t.id));
-
-                if (newTasks.length > 0) {
-                    this.tasks = [...newTasks, ...this.tasks];
-                    this.tasks.sort((a, b) => b.id - a.id);
-                    this.renderTasks();
-                    this.showToast(`Fetched ${newTasks.length} new items`);
-                }
-            }
-            this.syncStatus.textContent = 'Cloud Active';
-            this.syncStatus.style.color = '#4ade80';
-        } catch (e) {
-            console.error('Pull failed', e);
-            this.syncStatus.textContent = 'Sync Paused';
-        }
     }
 
     updateSyncStatus() {
@@ -587,9 +481,6 @@ class VoiceTaskApp {
             this.saveSettings();
             this.updateUserUI();
             this.showToast(`Logged in as ${this.user.name}`);
-
-            // Try to pull data immediately for the new user
-            if (this.syncUrlInput.value) this.pullFromCloud();
         } catch (e) {
             console.error('Login failed', e);
             this.showToast('Login failed');
@@ -646,9 +537,6 @@ class VoiceTaskApp {
         this.logHistory(action, task);
         this.saveTasks();
         this.renderTasks();
-
-        // Instant sync on state change
-        this.syncToCloud();
     }
 
     deleteTaskById(taskId) {
@@ -750,11 +638,11 @@ class VoiceTaskApp {
             </article>
         `;
 
-        div.querySelector('.task-checkbox').addEventListener('change', () => this.toggleTaskComplete(task.id));
+        div.querySelector('.task-checkbox').addEventListener('change', () => this.toggleTask(task.id));
         div.querySelector('.task-edit').addEventListener('click', () => this.editTask(task.id));
         div.querySelector('.task-delete').addEventListener('click', () => this.deleteTaskById(task.id));
 
-        return div.firstElementChild; // Return the article element
+        return div.firstElementChild;
     }
 
     escapeHtml(text) {
@@ -831,7 +719,7 @@ class VoiceTaskApp {
     }
 }
 
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize Application
+window.addEventListener('load', () => {
     new VoiceTaskApp();
 });
