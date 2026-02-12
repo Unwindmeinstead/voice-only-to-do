@@ -264,52 +264,35 @@
         }
 
         .mic-button {
-            width: 72px;
-            height: 72px;
+            width: 64px;
+            height: 64px;
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            background: radial-gradient(circle at top, rgba(255, 255, 255, 0.14), rgba(8, 8, 10, 0.98));
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: #0c0c10;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             pointer-events: auto;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
-            position: relative;
-        }
-
-        .mic-button::before {
-            content: '';
-            position: absolute;
-            inset: 6px;
-            border-radius: inherit;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            opacity: 0.8;
+            transition: background 0.16s ease, border-color 0.16s ease;
         }
 
         .mic-button:hover {
-            transform: translateY(-1px);
-            border-color: rgba(255, 255, 255, 0.32);
+            border-color: rgba(255, 255, 255, 0.5);
         }
 
         .mic-button:active {
-            transform: translateY(1px) scale(0.97);
+            background: #08080b;
         }
 
         .mic-button.recording {
-            background: radial-gradient(circle at top, rgba(248, 113, 113, 0.2), rgba(8, 8, 10, 0.98));
             border-color: rgba(248, 113, 113, 0.9);
-        }
-
-        .mic-button.recording::before {
-            border-color: rgba(248, 113, 113, 0.6);
+            background: #3b1518;
         }
 
         .mic-icon {
-            width: 30px;
-            height: 30px;
+            width: 26px;
+            height: 26px;
             stroke: #ffffff;
             stroke-width: 1.4;
             fill: none;
