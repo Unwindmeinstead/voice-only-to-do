@@ -13,8 +13,9 @@ class VoiceTaskApp {
     
     initializeElements() {
         this.voiceBtn = document.getElementById('voiceBtn');
+        this.voiceBtnBottom = document.getElementById('voiceBtnBottom');
+        this.voiceCircle = document.getElementById('voiceCircle');
         this.micIcon = document.getElementById('micIcon');
-        this.soundBars = document.getElementById('soundBars');
         this.statusText = document.getElementById('statusText');
         this.transcription = document.getElementById('transcription');
         this.transcriptText = document.getElementById('transcriptText');
@@ -23,9 +24,22 @@ class VoiceTaskApp {
         this.installBtn = document.getElementById('installBtn');
         this.toast = document.getElementById('toast');
         this.toastMessage = document.getElementById('toastMessage');
+        this.currentTime = document.getElementById('currentTime');
         
         this.voiceBtn.addEventListener('click', () => this.toggleRecording());
+        this.voiceBtnBottom.addEventListener('click', () => this.toggleRecording());
         this.initializeAudioContext();
+        this.updateTime();
+        setInterval(() => this.updateTime(), 60000); // Update every minute
+    }
+    
+    updateTime() {
+        const now = new Date();
+        const hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        this.currentTime.textContent = `${displayHours}:${minutes} ${ampm}`;
     }
     
     async initializeAudioContext() {
@@ -76,7 +90,6 @@ class VoiceTaskApp {
         this.recognition.onstart = () => {
             this.isRecording = true;
             this.updateRecordingUI(true);
-            this.statusText.textContent = 'Listening...';
             this.playBeep && this.playBeep(600, 80); // Start beep
         };
         
@@ -148,7 +161,6 @@ class VoiceTaskApp {
     stopRecording() {
         this.isRecording = false;
         this.updateRecordingUI(false);
-        this.statusText.textContent = 'Tap to speak';
         this.playBeep && this.playBeep(400, 80); // End beep
         
         if (this.recognition) {
@@ -163,11 +175,9 @@ class VoiceTaskApp {
     
     updateRecordingUI(recording) {
         if (recording) {
-            this.voiceBtn.classList.add('recording');
-            this.soundBars.classList.remove('hidden');
+            this.voiceCircle.classList.add('recording');
         } else {
-            this.voiceBtn.classList.remove('recording');
-            this.soundBars.classList.add('hidden');
+            this.voiceCircle.classList.remove('recording');
         }
     }
     
@@ -287,12 +297,11 @@ class VoiceTaskApp {
     renderTasks() {
         if (this.tasks.length === 0) {
             this.taskList.innerHTML = `
-                <div class="text-center py-16 text-gray-500 floating-hint">
-                    <svg class="w-20 h-20 mx-auto mb-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                <div class="text-center py-12 text-gray-500 floating">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                     </svg>
-                    <p class="text-lg font-medium mb-2">Ready when you are</p>
-                    <p class="text-sm">Tap the microphone and speak your first task</p>
+                    <p class="text-sm">No tasks yet. Tap the microphone to add your first task.</p>
                 </div>
             `;
             this.taskCount.textContent = '0';
