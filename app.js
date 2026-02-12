@@ -284,14 +284,20 @@ class VoiceTaskApp {
         let type = 'task';
         let finalContent = text;
 
-        // Date/Time keywords for Event detection
-        const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'at', 'pm', 'am', 'morning', 'afternoon', 'night', 'tonight'];
-        const hasDate = dateKeywords.some(kw => text.includes(kw));
+        // Date/Time keywords with word boundaries to avoid partial matches (e.g., 'am' in 'Amazon')
+        const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'morning', 'afternoon', 'evening', 'night', 'tonight', 'pm', 'am'];
 
-        if (text.startsWith('remind me') || text.startsWith('notification') || text.startsWith('alert')) {
+        const hasDateKeyword = dateKeywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(text));
+        const hasTimePattern = /\b(at|around|by)\s+\d{1,2}(:\d{2})?\b/i.test(text);
+        const hasNumericalDate = /\b\d{1,2}(\/|-)\d{1,2}\b/.test(text);
+
+        if (text.startsWith('remind me') || text.startsWith('notification') || text.startsWith('alert') || text.startsWith('remember')) {
             type = 'notification';
-            finalContent = text.replace('remind me', '').replace('notification', '').replace('alert', '').trim();
-        } else if (hasDate) {
+            finalContent = text.replace('remind me', '').replace('notification', '').replace('alert', '').replace('remember', '').trim();
+        } else if (text.startsWith('event') || text.startsWith('calendar')) {
+            type = 'event';
+            finalContent = text.replace('event', '').replace('calendar', '').trim();
+        } else if (hasDateKeyword || hasTimePattern || hasNumericalDate) {
             type = 'event';
         }
 
