@@ -203,7 +203,15 @@ class VoiceTaskApp {
         this.tasks.unshift(task);
         this.saveTasks();
         this.renderTasks();
-        this.showToast(`Task added: ${text}`);
+        this.triggerSuccessAnimation();
+    }
+
+    triggerSuccessAnimation() {
+        if (!this.micButton) return;
+        this.micButton.classList.add('success');
+        setTimeout(() => {
+            this.micButton.classList.remove('success');
+        }, 1500);
     }
     
     completeTask(taskText) {
