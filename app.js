@@ -1,0 +1,374 @@
+class VoiceTaskApp {
+    constructor() {
+        this.tasks = this.loadTasks();
+        this.isRecording = false;
+        this.recognition = null;
+        this.installPrompt = null;
+        
+        this.initializeElements();
+        this.initializeSpeechRecognition();
+        this.initializePWA();
+        this.renderTasks();
+    }
+    
+    initializeElements() {
+        this.voiceBtn = document.getElementById('voiceBtn');
+        this.micIcon = document.getElementById('micIcon');
+        this.recordingIndicator = document.getElementById('recordingIndicator');
+        this.statusText = document.getElementById('statusText');
+        this.transcription = document.getElementById('transcription');
+        this.transcriptText = document.getElementById('transcriptText');
+        this.taskList = document.getElementById('taskList');
+        this.taskCount = document.getElementById('taskCount');
+        this.installBtn = document.getElementById('installBtn');
+        this.toast = document.getElementById('toast');
+        this.toastMessage = document.getElementById('toastMessage');
+        
+        this.voiceBtn.addEventListener('click', () => this.toggleRecording());
+    }
+    
+    initializeSpeechRecognition() {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            this.showToast('Speech recognition is not supported in your browser');
+            return;
+        }
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        this.recognition = new SpeechRecognition();
+        
+        this.recognition.continuous = false;
+        this.recognition.interimResults = true;
+        this.recognition.lang = 'en-US';
+        
+        this.recognition.onstart = () => {
+            this.isRecording = true;
+            this.updateRecordingUI(true);
+            this.statusText.textContent = 'Listening... Speak now!';
+        };
+        
+        this.recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map(result => result[0])
+                .map(result => result.transcript)
+                .join('');
+            
+            this.transcriptText.textContent = transcript;
+            this.transcription.classList.remove('hidden');
+            
+            if (event.results[0].isFinal) {
+                this.processVoiceCommand(transcript);
+            }
+        };
+        
+        this.recognition.onerror = (event) => {
+            console.error('Speech recognition error:', event.error);
+            this.showToast(`Error: ${event.error}`);
+            this.stopRecording();
+        };
+        
+        this.recognition.onend = () => {
+            this.stopRecording();
+        };
+    }
+    
+    initializePWA() {
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => console.log('SW registered'))
+                .catch(error => console.log('SW registration failed'));
+        }
+        
+        // Install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            this.installPrompt = e;
+            this.installBtn.classList.remove('hidden');
+        });
+        
+        this.installBtn.addEventListener('click', () => {
+            if (this.installPrompt) {
+                this.installPrompt.prompt();
+                this.installPrompt.userChoice.then((result) => {
+                    this.installPrompt = null;
+                    this.installBtn.classList.add('hidden');
+                });
+            }
+        });
+    }
+    
+    toggleRecording() {
+        if (this.isRecording) {
+            this.stopRecording();
+        } else {
+            this.startRecording();
+        }
+    }
+    
+    startRecording() {
+        if (this.recognition) {
+            this.recognition.start();
+        }
+    }
+    
+    stopRecording() {
+        this.isRecording = false;
+        this.updateRecordingUI(false);
+        this.statusText.textContent = 'Click to start recording';
+        
+        if (this.recognition) {
+            this.recognition.stop();
+        }
+        
+        setTimeout(() => {
+            this.transcription.classList.add('hidden');
+            this.transcriptText.textContent = '';
+        }, 3000);
+    }
+    
+    updateRecordingUI(recording) {
+        if (recording) {
+            this.voiceBtn.classList.add('recording', 'bg-red-500');
+            this.voiceBtn.classList.remove('from-indigo-500', 'to-purple-600');
+            this.recordingIndicator.classList.remove('hidden');
+        } else {
+            this.voiceBtn.classList.remove('recording', 'bg-red-500');
+            this.voiceBtn.classList.add('from-indigo-500', 'to-purple-600');
+            this.recordingIndicator.classList.add('hidden');
+        }
+    }
+    
+    processVoiceCommand(transcript) {
+        const command = transcript.toLowerCase().trim();
+        
+        // Add task commands
+        if (command.startsWith('add task') || command.startsWith('add') || command.startsWith('create')) {
+            const taskText = command.replace(/^(add task|add|create)\s+/i, '').trim();
+            if (taskText) {
+                this.addTask(taskText);
+                return;
+            }
+        }
+        
+        // Complete task commands
+        if (command.startsWith('complete') || command.startsWith('done') || command.startsWith('finish')) {
+            const taskText = command.replace(/^(complete|done|finish)\s+/i, '').trim();
+            if (taskText) {
+                this.completeTask(taskText);
+                return;
+            }
+        }
+        
+        // Delete task commands
+        if (command.startsWith('delete') || command.startsWith('remove')) {
+            const taskText = command.replace(/^(delete|remove)\s+/i, '').trim();
+            if (taskText) {
+                this.deleteTask(taskText);
+                return;
+            }
+        }
+        
+        // Clear completed tasks
+        if (command.includes('clear completed') || command.includes('clear done')) {
+            this.clearCompletedTasks();
+            return;
+        }
+        
+        // If no specific command, treat as add task
+        if (command.length > 0) {
+            this.addTask(transcript);
+        }
+    }
+    
+    addTask(text) {
+        const task = {
+            id: Date.now(),
+            text: text,
+            completed: false,
+            createdAt: new Date().toISOString()
+        };
+        
+        this.tasks.unshift(task);
+        this.saveTasks();
+        this.renderTasks();
+        this.showToast(`Task added: ${text}`);
+    }
+    
+    completeTask(taskText) {
+        const task = this.tasks.find(t => 
+            t.text.toLowerCase().includes(taskText.toLowerCase()) && !t.completed
+        );
+        
+        if (task) {
+            task.completed = true;
+            this.saveTasks();
+            this.renderTasks();
+            this.showToast(`Task completed: ${task.text}`);
+        } else {
+            this.showToast(`Task not found: ${taskText}`);
+        }
+    }
+    
+    deleteTask(taskText) {
+        const taskIndex = this.tasks.findIndex(t => 
+            t.text.toLowerCase().includes(taskText.toLowerCase())
+        );
+        
+        if (taskIndex !== -1) {
+            const deletedTask = this.tasks.splice(taskIndex, 1)[0];
+            this.saveTasks();
+            this.renderTasks();
+            this.showToast(`Task deleted: ${deletedTask.text}`);
+        } else {
+            this.showToast(`Task not found: ${taskText}`);
+        }
+    }
+    
+    clearCompletedTasks() {
+        const completedCount = this.tasks.filter(t => t.completed).length;
+        if (completedCount > 0) {
+            this.tasks = this.tasks.filter(t => !t.completed);
+            this.saveTasks();
+            this.renderTasks();
+            this.showToast(`Cleared ${completedCount} completed task${completedCount > 1 ? 's' : ''}`);
+        } else {
+            this.showToast('No completed tasks to clear');
+        }
+    }
+    
+    toggleTaskComplete(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (task) {
+            task.completed = !task.completed;
+            this.saveTasks();
+            this.renderTasks();
+        }
+    }
+    
+    deleteTaskById(taskId) {
+        this.tasks = this.tasks.filter(t => t.id !== taskId);
+        this.saveTasks();
+        this.renderTasks();
+    }
+    
+    renderTasks() {
+        if (this.tasks.length === 0) {
+            this.taskList.innerHTML = `
+                <div class="text-center py-12 text-gray-400">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <p>No tasks yet. Start by adding your first voice task!</p>
+                </div>
+            `;
+            this.taskCount.textContent = '0';
+            return;
+        }
+        
+        const activeTasks = this.tasks.filter(t => !t.completed);
+        const completedTasks = this.tasks.filter(t => t.completed);
+        
+        let html = '';
+        
+        // Active tasks
+        if (activeTasks.length > 0) {
+            html += '<div class="mb-6"><h4 class="text-sm font-medium text-gray-500 mb-3">Active Tasks</h4>';
+            activeTasks.forEach(task => {
+                html += this.createTaskHTML(task);
+            });
+            html += '</div>';
+        }
+        
+        // Completed tasks
+        if (completedTasks.length > 0) {
+            html += '<div><h4 class="text-sm font-medium text-gray-500 mb-3">Completed</h4>';
+            completedTasks.forEach(task => {
+                html += this.createTaskHTML(task);
+            });
+            html += '</div>';
+        }
+        
+        this.taskList.innerHTML = html;
+        this.taskCount.textContent = activeTasks.length;
+        
+        // Add event listeners
+        this.tasks.forEach(task => {
+            const checkbox = document.getElementById(`checkbox-${task.id}`);
+            const deleteBtn = document.getElementById(`delete-${task.id}`);
+            
+            if (checkbox) {
+                checkbox.addEventListener('change', () => this.toggleTaskComplete(task.id));
+            }
+            
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', () => this.deleteTaskById(task.id));
+            }
+        });
+    }
+    
+    createTaskHTML(task) {
+        return `
+            <div class="task-item flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 fade-in ${task.completed ? 'opacity-60' : ''}">
+                <input 
+                    type="checkbox" 
+                    id="checkbox-${task.id}"
+                    ${task.completed ? 'checked' : ''}
+                    class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                >
+                <div class="flex-1">
+                    <p class="${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}">${task.text}</p>
+                    <p class="text-xs text-gray-400 mt-1">${this.formatDate(task.createdAt)}</p>
+                </div>
+                <button 
+                    id="delete-${task.id}"
+                    class="text-red-500 hover:text-red-700 transition-colors p-1"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }
+    
+    formatDate(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+        
+        return date.toLocaleDateString();
+    }
+    
+    showToast(message) {
+        this.toastMessage.textContent = message;
+        this.toast.classList.remove('translate-y-20');
+        this.toast.classList.add('translate-y-0');
+        
+        setTimeout(() => {
+            this.toast.classList.remove('translate-y-0');
+            this.toast.classList.add('translate-y-20');
+        }, 3000);
+    }
+    
+    saveTasks() {
+        localStorage.setItem('voiceTasks', JSON.stringify(this.tasks));
+    }
+    
+    loadTasks() {
+        const saved = localStorage.getItem('voiceTasks');
+        return saved ? JSON.parse(saved) : [];
+    }
+}
+
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    new VoiceTaskApp();
+});
