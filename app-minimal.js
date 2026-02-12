@@ -320,8 +320,10 @@ class VoiceTaskApp {
     updateRecordingUI(recording) {
         if (recording) {
             this.micButton.classList.add('recording');
+            document.body.classList.add('recording-mode');
         } else {
             this.micButton.classList.remove('recording');
+            document.body.classList.remove('recording-mode');
         }
     }
 

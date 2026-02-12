@@ -302,12 +302,12 @@
             box-shadow:
                 0 10px 30px rgba(0, 0, 0, 0.4),
                 inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             position: fixed;
             left: 50%;
-            bottom: calc(30px + env(safe-area-inset-bottom));
+            bottom: calc(15px + env(safe-area-inset-bottom));
             transform: translateX(-50%);
-            z-index: 20;
+            z-index: 3000;
             overflow: hidden;
         }
 
@@ -469,22 +469,52 @@
 
         .transcription {
             position: fixed;
-            left: 50%;
-            bottom: calc(140px + env(safe-area-inset-bottom));
-            transform: translateX(-50%) translateY(20px);
-            padding: 20px;
+            left: 0;
+            top: 0;
             width: 100%;
-            max-width: 600px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
             opacity: 0;
             pointer-events: none;
-            z-index: 22;
+            z-index: 2500;
             transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
             text-align: center;
         }
 
         .transcription.show {
             opacity: 1;
-            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Dictation Focus Mode */
+        .app-shell {
+            transition: filter 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease;
+        }
+
+        body.recording-mode .app-shell {
+            filter: blur(20px) grayscale(0.2) brightness(0.4);
+            transform: scale(0.96);
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        body.recording-mode .mic-button {
+            bottom: 50%;
+            transform: translate(-50%, 50%) scale(1.2);
+            background: #ffffff;
+            box-shadow: 0 0 100px rgba(255, 255, 255, 0.2);
+        }
+
+        body.recording-mode .transcription {
+            opacity: 1;
+        }
+
+        body.recording-mode #transcriptText {
+            transform: translateY(-80px);
+            font-size: 32px;
+            font-weight: 600;
         }
 
         #transcriptText {
