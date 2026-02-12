@@ -218,7 +218,6 @@ class VoiceTaskApp {
             const id = this.editingTaskId;
             this.editingTaskId = null;
             this.updateTaskText(id, transcript);
-            this.stopRecording(true);
             return;
         }
 
@@ -266,7 +265,6 @@ class VoiceTaskApp {
 
         if (finalTask.length > 0) {
             this.addTask(finalTask);
-            this.stopRecording(true);
         }
     }
 
@@ -301,7 +299,6 @@ class VoiceTaskApp {
             this.saveTasks();
             this.renderTasks();
             this.showToast(`Task ${task.completed ? 'completed' : 'unmarked'}`);
-            this.stopRecording(true);
         }
     }
 
@@ -332,7 +329,6 @@ class VoiceTaskApp {
             this.saveTasks();
             this.renderTasks();
             this.showToast(`Task deleted: ${deletedTask.text}`);
-            this.stopRecording(true);
         } else {
             this.showToast(`Task not found: ${taskText}`);
         }
@@ -374,7 +370,7 @@ class VoiceTaskApp {
         this.syncStatus.style.color = 'rgba(255,255,255,0.4)';
 
         try {
-            await fetch(url, {
+            fetch(url, {
                 method: 'POST',
                 mode: 'no-cors', // Apps Script requires this for direct browser POST
                 headers: { 'Content-Type': 'text/plain' },
