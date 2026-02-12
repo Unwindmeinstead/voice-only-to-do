@@ -135,7 +135,7 @@ class VoiceTaskApp {
         }
     }
 
-    stopRecording() {
+    stopRecording(immediate = false) {
         this.isRecording = false;
         this.updateRecordingUI(false);
         this.playBeep && this.playBeep(400, 80);
@@ -144,10 +144,11 @@ class VoiceTaskApp {
             this.recognition.stop();
         }
 
+        const delay = immediate ? 0 : 3000;
         setTimeout(() => {
             this.transcription.classList.remove('show');
             this.transcriptText.textContent = '';
-        }, 3000);
+        }, delay);
     }
 
     toggleSettings(show) {
@@ -200,6 +201,7 @@ class VoiceTaskApp {
         // Open settings commands
         if (command.includes('open settings') || command.includes('show settings') || command.includes('go to settings')) {
             this.toggleSettings(true);
+            this.stopRecording(true);
             return;
         }
 
@@ -227,6 +229,7 @@ class VoiceTaskApp {
         this.saveTasks();
         this.renderTasks();
         this.triggerSuccessAnimation();
+        this.stopRecording(true);
     }
 
     triggerSuccessAnimation() {
@@ -247,6 +250,7 @@ class VoiceTaskApp {
             this.saveTasks();
             this.renderTasks();
             this.showToast(`Task completed: ${task.text}`);
+            this.stopRecording(true);
         } else {
             this.showToast(`Task not found: ${taskText}`);
         }
@@ -262,6 +266,7 @@ class VoiceTaskApp {
             this.saveTasks();
             this.renderTasks();
             this.showToast(`Task deleted: ${deletedTask.text}`);
+            this.stopRecording(true);
         } else {
             this.showToast(`Task not found: ${taskText}`);
         }
