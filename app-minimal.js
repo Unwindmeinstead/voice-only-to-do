@@ -575,18 +575,19 @@ class VoiceTaskApp {
     createTaskHTML(task) {
         const div = document.createElement('div');
         const isEditing = this.editingTaskId === task.id;
+        const type = task.type || 'task';
 
         let icon = '';
-        if (task.type === 'note') {
-            icon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px; opacity:0.6;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> NOTE`;
-        } else if (task.type === 'reminder') {
-            icon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px; opacity:0.6;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> REMINDER`;
+        if (type === 'note') {
+            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> NOTE`;
+        } else if (type === 'reminder') {
+            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> REMINDER`;
         } else {
-            icon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px; opacity:0.6;"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> TASK`;
+            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> TASK`;
         }
 
         div.innerHTML = `
-            <article class="task-card ${task.completed ? 'completed' : ''} ${isEditing ? 'editing' : ''}" data-id="${task.id}">
+            <article class="task-card ${type} ${task.completed ? 'completed' : ''} ${isEditing ? 'editing' : ''}" data-id="${task.id}">
                 <input
                     id="task-check-${task.id}"
                     class="task-checkbox"
@@ -595,7 +596,7 @@ class VoiceTaskApp {
                     aria-label="Mark task as ${task.completed ? 'active' : 'completed'}"
                 />
                 <div class="task-main">
-                    <div style="font-size: 8px; font-weight: 800; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); margin-bottom: 4px; display: flex; align-items: center;">
+                    <div class="type-badge">
                         ${icon}
                     </div>
                     <div class="${task.completed ? 'task-text completed' : 'task-text'}">${this.escapeHtml(task.text)}</div>
