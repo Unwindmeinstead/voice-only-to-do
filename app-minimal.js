@@ -385,25 +385,39 @@ class VoiceTaskApp {
         this.syncStatus.style.color = 'rgba(255,255,255,0.4)';
 
         try {
-            // Using a simple form-encoded payload which Google ALWAYS accepts
-            const data = new URLSearchParams();
-            data.append('payload', JSON.stringify(this.tasks));
+            // THE GHOST FORM TECHNIQUE
+            // This bypasses all modern CORS/Security blocks by mimicking a plain HTML form
+            const iframe = document.createElement('iframe');
+            iframe.name = 'ghost_sync_frame';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
 
-            fetch(url, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: data
-            });
+            const form = document.createElement('form');
+            form.target = 'ghost_sync_frame';
+            form.action = url;
+            form.method = 'POST';
+            form.style.display = 'none';
 
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'payload'; // This is what the Apps Script looks for
+            input.value = JSON.stringify(this.tasks);
+
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+
+            // Cleanup
             setTimeout(() => {
+                document.body.removeChild(form);
+                document.body.removeChild(iframe);
                 this.syncStatus.textContent = 'Cloud Active';
                 this.syncStatus.style.color = '#4ade80';
-            }, 800);
+            }, 1000);
 
-            if (isManual) this.showToast('Sync pulse sent!');
+            if (isManual) this.showToast('Ghost Sync triggered!');
         } catch (error) {
-            console.error('Sync error:', error);
-            this.syncStatus.textContent = 'Network Offline';
+            this.syncStatus.textContent = 'Sync Blocked';
             this.syncStatus.style.color = '#f87171';
         }
     }
