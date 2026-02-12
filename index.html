@@ -561,17 +561,19 @@
         }
 
         /* Settings Modal */
-        /* iOS Style Settings Overlay */
+        /* iOS 17 Premium Modal System */
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             display: flex;
             align-items: flex-end;
             justify-content: center;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.32, 1, 0.67, 1);
             z-index: 2000;
         }
 
@@ -581,18 +583,18 @@
         }
 
         .modal-content {
-            background: #1c1c1e;
-            /* iOS Dark Standard */
+            background: #000000;
             width: 100%;
-            height: 94%;
-            max-width: none;
-            border-radius: 20px 20px 0 0;
-            padding: 0;
+            height: 92%;
+            border-radius: 40px 40px 0 0;
             display: flex;
             flex-direction: column;
             transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.5s cubic-bezier(0.32, 1, 0.67, 1);
             overflow: hidden;
+            box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: none;
         }
 
         .modal-overlay.show .modal-content {
@@ -600,44 +602,66 @@
         }
 
         .modal-header {
-            padding: 16px 20px;
+            padding: 24px 24px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #1c1c1e;
-            border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+            background: #000000;
             flex-shrink: 0;
+            position: relative;
+        }
+
+        /* Drag Handle for iOS feel */
+        .modal-header::after {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
         }
 
         .modal-title {
-            font-size: 17px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: 700;
             color: #ffffff;
+            letter-spacing: -0.02em;
         }
 
         .close-modal {
             color: #0a84ff;
-            /* iOS Blue */
-            font-size: 17px;
-            font-weight: 420;
-            background: none;
+            font-size: 18px;
+            font-weight: 500;
+            background: rgba(10, 132, 255, 0.1);
             border: none;
             cursor: pointer;
-            padding: 8px 0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+
+        .close-modal:active {
+            transform: scale(0.95);
+            background: rgba(10, 132, 255, 0.2);
         }
 
         .settings-list {
             flex: 1;
-            padding: 20px 16px;
+            padding: 8px 20px 40px;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            background: #000000;
         }
 
         .settings-group {
-            background: #2c2c2e;
-            border-radius: 12px;
+            background: #111111;
+            border-radius: 20px;
             margin-bottom: 24px;
             overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .settings-list::-webkit-scrollbar {
@@ -653,9 +677,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 16px;
+            padding: 16px 20px;
             background: transparent;
-            border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.2s;
+        }
+
+        .settings-item:active {
+            background: rgba(255, 255, 255, 0.03);
         }
 
         .settings-item:last-child {
@@ -719,76 +748,108 @@
         }
 
         .settings-item-label {
-            font-size: 15px;
-            font-weight: 400;
-            color: #ffffff;
+            font-size: 16px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.95);
         }
 
         .settings-item-desc {
             font-size: 13px;
+            font-weight: 400;
             opacity: 0.5;
-            margin-top: 2px;
+            margin-top: 4px;
         }
 
         .settings-input {
             width: 100%;
-            background: #3a3a3c;
-            border: none;
-            border-radius: 10px;
-            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 14px 18px;
             color: #ffffff;
             font-size: 16px;
-            margin-top: 12px;
+            margin-top: 16px;
             outline: none;
+            transition: all 0.3s;
         }
 
-        /* Calendar Premium Styles */
+        .settings-input:focus {
+            border-color: #0a84ff;
+            background: rgba(10, 132, 255, 0.05);
+        }
+
+        /* Premium Calendar Styles */
+        .calendar-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 0 20px;
+            font-size: 20px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 1px;
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.1);
             margin-top: 10px;
-            border-radius: 16px;
+            border-radius: 22px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .calendar-day {
-            background: #1c1c1e;
-            aspect-ratio: 0.85;
+            background: #000000;
+            aspect-ratio: 0.9;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 15px;
-            font-weight: 300;
+            font-size: 16px;
+            font-weight: 400;
             color: rgba(255, 255, 255, 0.9);
             position: relative;
+            transition: all 0.2s;
         }
 
-        .calendar-day.today {
+        .calendar-day:active {
+            background: #111111;
+        }
+
+        .calendar-day.today span {
             color: #0a84ff;
-            font-weight: 600;
+            font-weight: 700;
+            background: rgba(10, 132, 255, 0.1);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
         }
 
         .calendar-dot {
             width: 4px;
             height: 4px;
-            background: #0a84ff;
+            background: #4ade80;
             border-radius: 50%;
             position: absolute;
-            bottom: 8px;
+            bottom: 15%;
+            box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
         }
 
         .calendar-weekday {
-            font-size: 11px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.5);
             text-transform: uppercase;
-            padding: 12px 0;
-            background: #1c1c1e;
+            padding: 16px 0;
+            background: #000000;
             text-align: center;
+            letter-spacing: 0.05em;
         }
 
         .settings-status {
@@ -983,7 +1044,8 @@
                 <div class="modal-title">Calendar</div>
                 <button id="closeCalendar" class="close-modal">Done</button>
             </div>
-            <div class="settings-list">
+            <div class="settings-list" style="padding-top: 20px;">
+                <div id="calendarHeader" class="calendar-header"></div>
                 <div id="calendarGrid" class="calendar-grid"></div>
             </div>
         </div>

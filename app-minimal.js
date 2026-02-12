@@ -46,6 +46,8 @@ class VoiceTaskApp {
         this.userProfile = document.getElementById('userProfile');
         this.userAvatar = document.getElementById('userAvatar');
         this.userNameLabel = document.getElementById('userName');
+        this.calendarGrid = document.getElementById('calendarGrid');
+        this.calendarHeader = document.getElementById('calendarHeader');
 
         this.loadSettings();
 
@@ -425,33 +427,66 @@ class VoiceTaskApp {
             return;
         }
 
-        this.syncStatus.textContent = isManual ? 'Connecting...' : 'Syncing...';
-        this.syncStatus.style.color = 'rgba(255,255,255,0.4)';
+        this.syncStatus.textContent = isManual ? 'Syncing...' : 'Cloud Active';
 
         try {
+            // 1. PULL & RECONCILE: Get latest from other devices
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data && data.tasks) {
+                const cloudTasks = data.tasks;
+
+                // Create a map of tasks by ID for reconciliation
+                const taskMap = new Map();
+
+                // Add local tasks first
+                this.tasks.forEach(t => taskMap.set(t.id, t));
+
+                // Overlay cloud tasks (Last State Wins)
+                cloudTasks.forEach(cloudTask => {
+                    const localTask = taskMap.get(cloudTask.id);
+                    if (!localTask) {
+                        // Brand new task from another device
+                        taskMap.set(cloudTask.id, cloudTask);
+                    } else {
+                        // Sync status: If cloud says it's completed, it is. 
+                        // If local says it's completed, we'll push that later in Step 2.
+                        if (cloudTask.completed !== localTask.completed) {
+                            localTask.completed = cloudTask.completed;
+                        }
+                    }
+                });
+
+                // Update local list from reconciled map
+                this.tasks = Array.from(taskMap.values());
+                this.tasks.sort((a, b) => b.id - a.id);
+                this.renderTasks();
+                this.saveTasks(); // Persist reconciled state
+            }
+
+            // 2. PUSH SECOND: Upload the fully merged state
             const params = new URLSearchParams();
             params.append('payload', JSON.stringify({
                 tasks: this.tasks,
                 history: this.history
             }));
 
-            // Background Fire-and-Forget sync
-            const request = fetch(url, {
+            // Use POST to update the cloud with the merged data
+            await fetch(url, {
                 method: 'POST',
                 mode: 'no-cors',
                 body: params
             });
 
-            if (isManual) {
-                await request;
-                this.showToast('Cloud sync complete!');
-            }
-
-            this.syncStatus.textContent = 'Cloud Active';
+            this.syncStatus.textContent = 'Synced';
             this.syncStatus.style.color = '#4ade80';
+            if (isManual) this.showToast('All devices in sync!');
+
         } catch (error) {
-            console.error('Cloud Sync failed:', error);
-            this.syncStatus.textContent = 'Sync Paused';
+            console.error('Sync failed:', error);
+            this.syncStatus.textContent = 'Connection Issue';
+            this.syncStatus.style.color = '#f87171';
         }
     }
 
@@ -603,12 +638,17 @@ class VoiceTaskApp {
         return date.toLocaleDateString();
     }
 
-    toggleTaskComplete(taskId) {
+    toggleTask(taskId) {
         const task = this.tasks.find(t => t.id === taskId);
         if (!task) return;
         task.completed = !task.completed;
+        const action = task.completed ? 'COMPLETED' : 'REOPENED';
+        this.logHistory(action, task);
         this.saveTasks();
         this.renderTasks();
+
+        // Instant sync on state change
+        this.syncToCloud();
     }
 
     deleteTaskById(taskId) {
@@ -737,12 +777,16 @@ class VoiceTaskApp {
     }
 
     renderCalendar() {
-        if (!this.calendarGrid) return;
+        if (!this.calendarGrid || !this.calendarHeader) return;
         this.calendarGrid.innerHTML = '';
 
         const now = new Date();
         const year = now.getFullYear();
         const month = now.getMonth();
+
+        // Premium Header (e.g. "February 2026")
+        const monthName = now.toLocaleString('default', { month: 'long' });
+        this.calendarHeader.textContent = `${monthName} ${year}`;
 
         // Header weekdays
         ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
@@ -757,7 +801,10 @@ class VoiceTaskApp {
 
         // Empty spaces
         for (let i = 0; i < firstDay; i++) {
-            this.calendarGrid.appendChild(document.createElement('div'));
+            const empty = document.createElement('div');
+            empty.className = 'calendar-day';
+            empty.style.opacity = '0';
+            this.calendarGrid.appendChild(empty);
         }
 
         // Actual days
@@ -773,6 +820,12 @@ class VoiceTaskApp {
                 <span>${d}</span>
                 ${hasTasks ? '<div class="calendar-dot"></div>' : ''}
             `;
+
+            // Add iOS Haptic-like feedback on tap
+            dayEl.addEventListener('click', () => {
+                if ('vibrate' in navigator) navigator.vibrate(10);
+            });
+
             this.calendarGrid.appendChild(dayEl);
         }
     }
