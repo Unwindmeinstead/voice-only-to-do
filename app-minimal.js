@@ -364,24 +364,30 @@ class VoiceTaskApp {
         const url = this.syncUrlInput.value.trim();
         const isEnabled = document.getElementById('toggle-sync').classList.contains('active');
 
-        if (!url || !isEnabled) return;
+        if (!url || !isEnabled || !url.startsWith('https://script.google.com')) return;
 
         this.syncStatus.textContent = 'Syncing...';
         this.syncStatus.style.color = 'rgba(255,255,255,0.4)';
 
         try {
+            // Using URLSearchParams + no-cors is the most reliable "bridge" for Apps Script
+            const params = new URLSearchParams();
+            params.append('data', JSON.stringify(this.tasks));
+
             fetch(url, {
                 method: 'POST',
-                mode: 'no-cors', // Apps Script requires this for direct browser POST
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify(this.tasks)
+                mode: 'no-cors',
+                cache: 'no-cache',
+                body: params
             });
 
-            this.syncStatus.textContent = 'Active Sync';
-            this.syncStatus.style.color = '#4ade80';
+            setTimeout(() => {
+                this.syncStatus.textContent = 'Cloud Active';
+                this.syncStatus.style.color = '#4ade80';
+            }, 800);
         } catch (error) {
-            console.error('Sync failed:', error);
-            this.syncStatus.textContent = 'Sync failed';
+            console.error('Network error during sync:', error);
+            this.syncStatus.textContent = 'Network Error';
             this.syncStatus.style.color = '#f87171';
         }
     }
