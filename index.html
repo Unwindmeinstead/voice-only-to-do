@@ -529,15 +529,15 @@
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
+            background: rgba(4, 4, 7, 0.8);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
             pointer-events: none;
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: opacity 0.3s ease;
             z-index: 100;
         }
 
@@ -547,15 +547,17 @@
         }
 
         .modal-content {
-            background: rgba(20, 20, 25, 0.98);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 40px;
-            width: 90%;
-            max-width: 420px;
-            padding: 40px;
-            transform: scale(0.85) translateY(40px);
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.9);
+            background: #0b0b0f;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 44px;
+            width: 92%;
+            max-width: 440px;
+            padding: 44px;
+            transform: scale(0.96) translateY(10px);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow:
+                0 40px 120px rgba(0, 0, 0, 0.8),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.03);
         }
 
         .modal-overlay.show .modal-content {
@@ -566,57 +568,76 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 32px;
+            margin-bottom: 36px;
         }
 
         .modal-title {
             font-family: 'Poppins', sans-serif;
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 600;
-            letter-spacing: -0.03em;
+            color: #ffffff;
+            letter-spacing: -0.04em;
         }
 
         .close-modal {
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
             border: none;
-            color: white;
-            padding: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 12px;
             border-radius: 999px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .close-modal:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            transform: scale(1.05);
         }
 
         .settings-list {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 12px;
         }
 
         .settings-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            transition: background 0.2s ease;
+        }
+
+        .settings-item:hover {
             background: rgba(255, 255, 255, 0.04);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .settings-item-label {
-            font-size: 16px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 17px;
             font-weight: 500;
-            opacity: 0.95;
+            color: #ffffff;
+            letter-spacing: -0.01em;
         }
 
         .settings-item-desc {
+            font-family: 'Poppins', sans-serif;
             font-size: 13px;
-            opacity: 0.5;
-            margin-top: 4px;
+            opacity: 0.4;
+            margin-top: 2px;
+            letter-spacing: 0.01em;
+        }
+
+        .settings-status {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
         }
 
         @media (min-width: 768px) {
@@ -692,21 +713,21 @@
                 <div class="settings-item">
                     <div>
                         <div class="settings-item-label">Voice Feedback</div>
-                        <div class="settings-item-desc">Enable audio cues</div>
+                        <div class="settings-item-desc">High-fidelity audio cues</div>
                     </div>
-                    <div style="font-size: 14px; opacity: 0.6;">ENABLED</div>
+                    <div class="settings-status">Active</div>
                 </div>
                 <div class="settings-item">
                     <div>
                         <div class="settings-item-label">Cloud Sync</div>
-                        <div class="settings-item-desc">Auto-save to backup</div>
+                        <div class="settings-item-desc">Secure end-to-end backup</div>
                     </div>
-                    <div style="font-size: 14px; opacity: 0.6;">ON</div>
+                    <div class="settings-status">Online</div>
                 </div>
-                <div class="settings-item">
+                <div class="settings-item" style="opacity: 0.6;">
                     <div>
                         <div class="settings-item-label">App Model</div>
-                        <div class="settings-item-desc">Whisper-V3-Ultra</div>
+                        <div class="settings-item-desc">v2.1.0-ultra</div>
                     </div>
                 </div>
             </div>

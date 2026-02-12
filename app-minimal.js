@@ -59,21 +59,41 @@ class VoiceTaskApp {
     createBeepSound() {
         if (!this.audioContext) return;
 
-        this.playBeep = (frequency = 800, duration = 100) => {
-            const oscillator = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
+        this.playPing = () => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
 
-            oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
 
-            oscillator.frequency.value = frequency;
-            oscillator.type = 'sine';
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, this.audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(440, this.audioContext.currentTime + 0.1);
 
-            gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration / 1000);
+            gain.gain.setValueAtTime(0, this.audioContext.currentTime);
+            gain.gain.linearRampToValueAtTime(0.2, this.audioContext.currentTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
 
-            oscillator.start(this.audioContext.currentTime);
-            oscillator.stop(this.audioContext.currentTime + duration / 1000);
+            osc.start();
+            osc.stop(this.audioContext.currentTime + 0.2);
+        };
+
+        this.playPop = () => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+
+            osc.connect(gain);
+            gain.connect(this.audioContext.destination);
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(220, this.audioContext.currentTime);
+            osc.frequency.linearRampToValueAtTime(110, this.audioContext.currentTime + 0.1);
+
+            gain.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+
+            osc.start();
+            osc.stop(this.audioContext.currentTime + 0.1);
         };
     }
 
@@ -93,7 +113,7 @@ class VoiceTaskApp {
         this.recognition.onstart = () => {
             this.isRecording = true;
             this.updateRecordingUI(true);
-            this.playBeep && this.playBeep(600, 80);
+            this.playPing && this.playPing();
         };
 
         this.recognition.onresult = (event) => {
@@ -138,7 +158,7 @@ class VoiceTaskApp {
     stopRecording(immediate = false) {
         this.isRecording = false;
         this.updateRecordingUI(false);
-        this.playBeep && this.playBeep(400, 80);
+        this.playPop && this.playPop();
 
         if (this.recognition) {
             this.recognition.stop();
