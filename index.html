@@ -251,23 +251,6 @@
             opacity: 0.6;
         }
 
-        .mic-dock {
-            position: fixed;
-            left: 50%;
-            bottom: calc(18px + env(safe-area-inset-bottom));
-            transform: translateX(-50%);
-            z-index: 20;
-            width: 124px;
-            height: 56px;
-            background: #1c1c1f;
-            border-radius: 999px;
-            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.85);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
-        }
-
         .mic-button {
             width: 42px;
             height: 42px;
@@ -278,13 +261,17 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            pointer-events: auto;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
             transition: transform 0.12s ease, box-shadow 0.12s ease;
+            position: fixed;
+            left: 50%;
+            bottom: calc(22px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 20;
         }
 
         .mic-button:active {
-            transform: translateY(1px);
+            transform: translateX(-50%) translateY(1px);
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
         }
 
@@ -422,16 +409,13 @@
         </main>
     </div>
 
-    <div class="mic-dock">
-        <div class="mic-shadow"></div>
-        <button id="micButton" class="mic-button" aria-label="Toggle voice capture">
-            <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <rect class="wave wave-1" x="9" y="8.5" width="1.6" height="7" rx="0.8" />
-                <rect class="wave wave-2" x="11.4" y="7" width="1.8" height="10" rx="0.9" />
-                <rect class="wave wave-3" x="13.9" y="8.5" width="1.6" height="7" rx="0.8" />
-            </svg>
-        </button>
-    </div>
+    <button id="micButton" class="mic-button" aria-label="Toggle voice capture">
+        <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect class="wave wave-1" x="9" y="8.5" width="1.6" height="7" rx="0.8" />
+            <rect class="wave wave-2" x="11.4" y="7" width="1.8" height="10" rx="0.9" />
+            <rect class="wave wave-3" x="13.9" y="8.5" width="1.6" height="7" rx="0.8" />
+        </svg>
+    </button>
 
     <div id="transcription" class="transcription">
         <div id="transcriptText"></div>
