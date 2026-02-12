@@ -525,6 +525,100 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* Settings Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: rgba(20, 20, 25, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            width: 90%;
+            max-width: 420px;
+            padding: 40px;
+            transform: scale(0.85) translateY(40px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.9);
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .modal-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.03em;
+        }
+
+        .close-modal {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .close-modal:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.1);
+        }
+
+        .settings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .settings-item-label {
+            font-size: 16px;
+            font-weight: 500;
+            opacity: 0.95;
+        }
+
+        .settings-item-desc {
+            font-size: 13px;
+            opacity: 0.5;
+            margin-top: 4px;
+        }
+
         @media (min-width: 768px) {
             .app-shell {
                 border-radius: 24px;
@@ -580,6 +674,43 @@
 
     <div id="toast" class="toast">
         <span id="toastMessage"></span>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+                <button id="closeSettings" class="close-modal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="settings-list">
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label">Voice Feedback</div>
+                        <div class="settings-item-desc">Enable audio cues</div>
+                    </div>
+                    <div style="font-size: 14px; opacity: 0.6;">ENABLED</div>
+                </div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label">Cloud Sync</div>
+                        <div class="settings-item-desc">Auto-save to backup</div>
+                    </div>
+                    <div style="font-size: 14px; opacity: 0.6;">ON</div>
+                </div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label">App Model</div>
+                        <div class="settings-item-desc">Whisper-V3-Ultra</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="app-minimal.js"></script>

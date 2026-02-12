@@ -4,14 +4,14 @@ class VoiceTaskApp {
         this.isRecording = false;
         this.recognition = null;
         this.playBeep = null;
-        
+
         this.initializeElements();
         this.initializeSpeechRecognition();
         this.initializeAudioContext();
         this.renderTasks();
         this.initializePWA();
     }
-    
+
     initializeElements() {
         this.micButton = document.getElementById('micButton');
         this.transcription = document.getElementById('transcription');
@@ -22,12 +22,20 @@ class VoiceTaskApp {
         this.taskList = document.getElementById('taskList');
         this.taskCount = document.getElementById('taskCount');
         this.dateLabel = document.getElementById('dateLabel');
-        
+        this.settingsModal = document.getElementById('settingsModal');
+        this.closeSettings = document.getElementById('closeSettings');
+
         this.micButton.addEventListener('click', () => this.toggleRecording());
+        this.closeSettings.addEventListener('click', () => this.toggleSettings(false));
+
+        // Close modal on click outside
+        this.settingsModal.addEventListener('click', (e) => {
+            if (e.target === this.settingsModal) this.toggleSettings(false);
+        });
         this.createParticles();
         this.updateDateLabel();
     }
-    
+
     createParticles() {
         for (let i = 0; i < 50; i++) {
             const particle = document.createElement('div');
@@ -38,7 +46,7 @@ class VoiceTaskApp {
             this.particles.appendChild(particle);
         }
     }
-    
+
     async initializeAudioContext() {
         try {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -47,28 +55,28 @@ class VoiceTaskApp {
             console.log('Audio context not available');
         }
     }
-    
+
     createBeepSound() {
         if (!this.audioContext) return;
-        
+
         this.playBeep = (frequency = 800, duration = 100) => {
             const oscillator = this.audioContext.createOscillator();
             const gainNode = this.audioContext.createGain();
-            
+
             oscillator.connect(gainNode);
             gainNode.connect(this.audioContext.destination);
-            
+
             oscillator.frequency.value = frequency;
             oscillator.type = 'sine';
-            
+
             gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration / 1000);
-            
+
             oscillator.start(this.audioContext.currentTime);
             oscillator.stop(this.audioContext.currentTime + duration / 1000);
         };
     }
-    
+
     initializeSpeechRecognition() {
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
             this.showToast('Speech recognition is not supported in your browser');
@@ -77,42 +85,42 @@ class VoiceTaskApp {
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         this.recognition = new SpeechRecognition();
-        
+
         this.recognition.continuous = false;
         this.recognition.interimResults = true;
         this.recognition.lang = 'en-US';
-        
+
         this.recognition.onstart = () => {
             this.isRecording = true;
             this.updateRecordingUI(true);
             this.playBeep && this.playBeep(600, 80);
         };
-        
+
         this.recognition.onresult = (event) => {
             const transcript = Array.from(event.results)
                 .map(result => result[0])
                 .map(result => result.transcript)
                 .join('');
-            
+
             this.transcriptText.textContent = transcript;
             this.transcription.classList.add('show');
-            
+
             if (event.results[0].isFinal) {
                 this.processVoiceCommand(transcript);
             }
         };
-        
+
         this.recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
             this.showToast(`Error: ${event.error}`);
             this.stopRecording();
         };
-        
+
         this.recognition.onend = () => {
             this.stopRecording();
         };
     }
-    
+
     toggleRecording() {
         if (this.isRecording) {
             this.stopRecording();
@@ -120,28 +128,37 @@ class VoiceTaskApp {
             this.startRecording();
         }
     }
-    
+
     startRecording() {
         if (this.recognition) {
             this.recognition.start();
         }
     }
-    
+
     stopRecording() {
         this.isRecording = false;
         this.updateRecordingUI(false);
         this.playBeep && this.playBeep(400, 80);
-        
+
         if (this.recognition) {
             this.recognition.stop();
         }
-        
+
         setTimeout(() => {
             this.transcription.classList.remove('show');
             this.transcriptText.textContent = '';
         }, 3000);
     }
-    
+
+    toggleSettings(show) {
+        if (show) {
+            this.settingsModal.classList.add('show');
+            this.showToast('Settings opened');
+        } else {
+            this.settingsModal.classList.remove('show');
+        }
+    }
+
     updateRecordingUI(recording) {
         if (recording) {
             this.micButton.classList.add('recording');
@@ -149,10 +166,10 @@ class VoiceTaskApp {
             this.micButton.classList.remove('recording');
         }
     }
-    
+
     processVoiceCommand(transcript) {
         const command = transcript.toLowerCase().trim();
-        
+
         // Add task commands
         if (command.startsWith('add task') || command.startsWith('add') || command.startsWith('create')) {
             const taskText = command.replace(/^(add task|add|create)\s+/i, '').trim();
@@ -161,7 +178,7 @@ class VoiceTaskApp {
                 return;
             }
         }
-        
+
         // Complete task commands
         if (command.startsWith('complete') || command.startsWith('done') || command.startsWith('finish')) {
             const taskText = command.replace(/^(complete|done|finish)\s+/i, '').trim();
@@ -170,7 +187,7 @@ class VoiceTaskApp {
                 return;
             }
         }
-        
+
         // Delete task commands
         if (command.startsWith('delete') || command.startsWith('remove')) {
             const taskText = command.replace(/^(delete|remove)\s+/i, '').trim();
@@ -179,19 +196,25 @@ class VoiceTaskApp {
                 return;
             }
         }
-        
+
+        // Open settings commands
+        if (command.includes('open settings') || command.includes('show settings') || command.includes('go to settings')) {
+            this.toggleSettings(true);
+            return;
+        }
+
         // Clear completed tasks
         if (command.includes('clear completed') || command.includes('clear done')) {
             this.clearCompletedTasks();
             return;
         }
-        
+
         // If no specific command, treat as add task
         if (command.length > 0) {
             this.addTask(transcript);
         }
     }
-    
+
     addTask(text) {
         const task = {
             id: Date.now(),
@@ -199,7 +222,7 @@ class VoiceTaskApp {
             completed: false,
             createdAt: new Date().toISOString()
         };
-        
+
         this.tasks.unshift(task);
         this.saveTasks();
         this.renderTasks();
@@ -213,12 +236,12 @@ class VoiceTaskApp {
             this.micButton.classList.remove('success');
         }, 1500);
     }
-    
+
     completeTask(taskText) {
-        const task = this.tasks.find(t => 
+        const task = this.tasks.find(t =>
             t.text.toLowerCase().includes(taskText.toLowerCase()) && !t.completed
         );
-        
+
         if (task) {
             task.completed = true;
             this.saveTasks();
@@ -228,12 +251,12 @@ class VoiceTaskApp {
             this.showToast(`Task not found: ${taskText}`);
         }
     }
-    
+
     deleteTask(taskText) {
-        const taskIndex = this.tasks.findIndex(t => 
+        const taskIndex = this.tasks.findIndex(t =>
             t.text.toLowerCase().includes(taskText.toLowerCase())
         );
-        
+
         if (taskIndex !== -1) {
             const deletedTask = this.tasks.splice(taskIndex, 1)[0];
             this.saveTasks();
@@ -243,7 +266,7 @@ class VoiceTaskApp {
             this.showToast(`Task not found: ${taskText}`);
         }
     }
-    
+
     clearCompletedTasks() {
         const completedCount = this.tasks.filter(t => t.completed).length;
         if (completedCount > 0) {
@@ -255,20 +278,20 @@ class VoiceTaskApp {
             this.showToast('No completed tasks to clear');
         }
     }
-    
+
     showToast(message) {
         this.toastMessage.textContent = message;
         this.toast.classList.add('show');
-        
+
         setTimeout(() => {
             this.toast.classList.remove('show');
         }, 3000);
     }
-    
+
     saveTasks() {
         localStorage.setItem('voiceTasks', JSON.stringify(this.tasks));
     }
-    
+
     loadTasks() {
         const saved = localStorage.getItem('voiceTasks');
         return saved ? JSON.parse(saved) : [];
