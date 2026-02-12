@@ -98,6 +98,8 @@ class VoiceTaskApp {
 
         this.createParticles();
         this.updateDateLabel();
+        this.bars = Array.from(document.querySelectorAll('.bar'));
+        this.tiltEnabled = false;
     }
 
     createParticles() {
@@ -207,6 +209,11 @@ class VoiceTaskApp {
     }
 
     toggleRecording() {
+        // Request Gyro permission on first interaction (iOS requirement)
+        if (!this.tiltEnabled) {
+            this.requestTiltPermission();
+        }
+
         if (this.isRecording) {
             this.stopRecording();
         } else {
@@ -214,7 +221,62 @@ class VoiceTaskApp {
         }
     }
 
+    async requestTiltPermission() {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            try {
+                const state = await DeviceOrientationEvent.requestPermission();
+                if (state === 'granted') {
+                    this.initTilt();
+                }
+            } catch (e) { console.error(e); }
+        } else {
+            this.initTilt();
+        }
+    }
+
+    initTilt() {
+        this.tiltEnabled = true;
+        window.addEventListener('deviceorientation', (e) => this.handleTilt(e));
+    }
+
+    handleTilt(e) {
+        if (!this.bars || this.bars.length === 0 || this.isRecording) return;
+
+        const gamma = e.gamma; // -90 to 90
+        const sensitivity = 20; // degree range
+        const normalized = Math.min(Math.max((gamma + sensitivity) / (sensitivity * 2), 0), 1);
+        const activeIndex = Math.floor(normalized * (this.bars.length - 1));
+
+        this.bars.forEach((bar, i) => {
+            const distance = Math.abs(i - activeIndex);
+            if (distance === 0) {
+                bar.style.transform = 'scaleY(2.2)';
+                bar.style.opacity = '1';
+                bar.style.background = '#0a84ff';
+                bar.style.boxShadow = '0 0 15px rgba(10, 132, 255, 0.5)';
+            } else if (distance === 1) {
+                bar.style.transform = 'scaleY(1.4)';
+                bar.style.opacity = '0.8';
+                bar.style.background = 'rgba(255,255,255,0.5)';
+                bar.style.boxShadow = 'none';
+            } else {
+                bar.style.transform = '';
+                bar.style.opacity = '';
+                bar.style.background = '';
+                bar.style.boxShadow = 'none';
+            }
+        });
+    }
+
     startRecording() {
+        if (this.bars) {
+            this.bars.forEach(bar => {
+                bar.style.transform = '';
+                bar.style.opacity = '';
+                bar.style.background = '';
+                bar.style.boxShadow = '';
+            });
+        }
         if (this.recognition) {
             this.recognition.start();
         }
@@ -323,6 +385,14 @@ class VoiceTaskApp {
 
     triggerSuccessAnimation() {
         if (!this.micButton) return;
+        if (this.bars) {
+            this.bars.forEach(bar => {
+                bar.style.transform = '';
+                bar.style.opacity = '';
+                bar.style.background = '';
+                bar.style.boxShadow = '';
+            });
+        }
         this.micButton.classList.add('success');
         setTimeout(() => {
             this.micButton.classList.remove('success');
