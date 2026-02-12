@@ -1,6 +1,7 @@
 class VoiceTaskApp {
     constructor() {
         this.tasks = this.loadTasks();
+        this.history = this.loadHistory();
         this.isRecording = false;
         this.recognition = null;
         this.playBeep = null;
@@ -236,63 +237,66 @@ class VoiceTaskApp {
         // Settings (Universal)
         if (text.includes('settings') || text.includes('config')) {
             this.toggleSettings(true);
-            this.stopRecording(true);
             return;
         }
 
-        // Completion logic
+        // Action Detection (Complete/Delete)
         const completeKeywords = ['complete', 'done', 'finish', 'check off'];
         for (const kw of completeKeywords) {
             if (text.startsWith(kw)) {
-                const taskText = text.replace(kw, '').trim();
-                if (taskText) {
-                    this.completeTask(taskText);
-                    return;
-                }
+                this.completeTask(text.replace(kw, '').trim());
+                return;
             }
         }
 
-        // Deletion logic
         const deleteKeywords = ['delete', 'remove', 'trash', 'remove task'];
         for (const kw of deleteKeywords) {
             if (text.startsWith(kw)) {
-                const taskText = text.replace(kw, '').trim();
-                if (taskText) {
-                    this.deleteTask(taskText);
-                    return;
+                this.deleteTask(text.replace(kw, '').trim());
+                return;
+            }
+        }
+
+        // Type Intelligence (Task/Note/Reminder)
+        let type = 'task';
+        let finalContent = text;
+
+        if (text.startsWith('remind me to') || text.startsWith('reminder')) {
+            type = 'reminder';
+            finalContent = text.replace('remind me to', '').replace('reminder', '').trim();
+        } else if (text.startsWith('note down') || text.startsWith('take a note') || text.startsWith('note')) {
+            type = 'note';
+            finalContent = text.replace('note down', '').replace('take a note', '').replace('note', '').trim();
+        } else {
+            // Clean common add prefixes
+            const addPrefixes = ['add task', 'add', 'create', 'new task'];
+            for (const pre of addPrefixes) {
+                if (text.startsWith(pre)) {
+                    finalContent = text.replace(pre, '').trim();
+                    break;
                 }
             }
         }
 
-        // Add task (Default)
-        // Clean up common "add" prefixes if present
-        const addPrefixes = ['add task', 'add', 'create', 'new task'];
-        let finalTask = text;
-        for (const pre of addPrefixes) {
-            if (text.startsWith(pre)) {
-                finalTask = text.replace(pre, '').trim();
-                break;
-            }
-        }
-
-        if (finalTask.length > 0) {
-            this.addTask(finalTask);
+        if (finalContent.length > 0) {
+            this.addTask(finalContent, type);
         }
     }
 
-    addTask(text) {
+    addTask(text, type = 'task') {
         const task = {
             id: Date.now(),
             text: text,
+            type: type,
             completed: false,
             createdAt: new Date().toISOString()
         };
 
         this.tasks.unshift(task);
+        this.logHistory('CREATED', task);
         this.saveTasks();
         this.renderTasks();
         this.triggerSuccessAnimation();
-        this.stopRecording(true);
     }
 
     triggerSuccessAnimation() {
@@ -308,6 +312,7 @@ class VoiceTaskApp {
         const task = this.tasks.find(t => t.text.toLowerCase().includes(query));
         if (task) {
             task.completed = !task.completed;
+            this.logHistory(task.completed ? 'COMPLETED' : 'REOPENED', task);
             this.saveTasks();
             this.renderTasks();
             this.showToast(`Task ${task.completed ? 'completed' : 'unmarked'}`);
@@ -324,7 +329,9 @@ class VoiceTaskApp {
     updateTaskText(id, newText) {
         const task = this.tasks.find(t => t.id === id);
         if (task) {
+            const oldText = task.text;
             task.text = newText;
+            this.logHistory('EDITED', task, `From: "${oldText}"`);
             this.saveTasks();
             this.renderTasks();
             this.triggerSuccessAnimation();
@@ -338,11 +345,12 @@ class VoiceTaskApp {
 
         if (taskIndex !== -1) {
             const deletedTask = this.tasks.splice(taskIndex, 1)[0];
+            this.logHistory('DELETED', deletedTask);
             this.saveTasks();
             this.renderTasks();
-            this.showToast(`Task deleted: ${deletedTask.text}`);
+            this.showToast(`Deleted: ${deletedTask.text}`);
         } else {
-            this.showToast(`Task not found: ${taskText}`);
+            this.showToast(`Not found: ${taskText}`);
         }
     }
 
@@ -369,7 +377,21 @@ class VoiceTaskApp {
 
     saveTasks() {
         localStorage.setItem('voiceTasks', JSON.stringify(this.tasks));
+        localStorage.setItem('doneHistory', JSON.stringify(this.history));
         this.syncToCloud();
+    }
+
+    logHistory(action, task, details = '') {
+        const entry = {
+            timestamp: new Date().toISOString(),
+            action: action,
+            taskId: task.id,
+            text: task.text,
+            type: task.type || 'task',
+            details: details
+        };
+        this.history.unshift(entry);
+        if (this.history.length > 200) this.history.pop(); // Keep manageable
     }
 
     async syncToCloud(isManual = false) {
@@ -388,7 +410,10 @@ class VoiceTaskApp {
 
         try {
             const params = new URLSearchParams();
-            params.append('payload', JSON.stringify(this.tasks));
+            params.append('payload', JSON.stringify({
+                tasks: this.tasks,
+                history: this.history
+            }));
 
             // Background Fire-and-Forget sync
             const request = fetch(url, {
@@ -459,6 +484,11 @@ class VoiceTaskApp {
         return saved ? JSON.parse(saved) : [];
     }
 
+    loadHistory() {
+        const saved = localStorage.getItem('doneHistory');
+        return saved ? JSON.parse(saved) : [];
+    }
+
     updateDateLabel() {
         if (!this.dateLabel) return;
         const now = new Date();
@@ -491,9 +521,13 @@ class VoiceTaskApp {
     }
 
     deleteTaskById(taskId) {
-        this.tasks = this.tasks.filter(t => t.id !== taskId);
-        this.saveTasks();
-        this.renderTasks();
+        const idx = this.tasks.findIndex(t => t.id === taskId);
+        if (idx !== -1) {
+            const deleted = this.tasks.splice(idx, 1)[0];
+            this.logHistory('DELETED', deleted);
+            this.saveTasks();
+            this.renderTasks();
+        }
     }
 
     renderTasks() {
@@ -542,6 +576,15 @@ class VoiceTaskApp {
         const div = document.createElement('div');
         const isEditing = this.editingTaskId === task.id;
 
+        let icon = '';
+        if (task.type === 'note') {
+            icon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px; opacity:0.6;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> NOTE`;
+        } else if (task.type === 'reminder') {
+            icon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px; opacity:0.6;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> REMINDER`;
+        } else {
+            icon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px; opacity:0.6;"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> TASK`;
+        }
+
         div.innerHTML = `
             <article class="task-card ${task.completed ? 'completed' : ''} ${isEditing ? 'editing' : ''}" data-id="${task.id}">
                 <input
@@ -552,6 +595,9 @@ class VoiceTaskApp {
                     aria-label="Mark task as ${task.completed ? 'active' : 'completed'}"
                 />
                 <div class="task-main">
+                    <div style="font-size: 8px; font-weight: 800; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); margin-bottom: 4px; display: flex; align-items: center;">
+                        ${icon}
+                    </div>
                     <div class="${task.completed ? 'task-text completed' : 'task-text'}">${this.escapeHtml(task.text)}</div>
                     <div class="task-meta">${this.formatRelativeDate(task.createdAt)}</div>
                 </div>
