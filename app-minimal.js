@@ -18,24 +18,24 @@ class VoiceTaskApp {
         this.locales = {
             'en-US': {
                 add: ['add task', 'add', 'create', 'new task'],
-                complete: ['complete', 'done', 'finish', 'mark as done'],
-                delete: ['delete', 'remove', 'trash'],
-                settings: ['open settings', 'show settings', 'settings'],
-                clear: ['clear completed', 'clear done']
+                complete: ['complete', 'done', 'finish', 'mark as done', 'completed'],
+                delete: ['delete', 'remove', 'trash', 'delete task'],
+                settings: ['open settings', 'show settings', 'settings', 'config'],
+                clear: ['clear completed', 'clear done', 'clear all']
             },
             'hi-IN': {
-                add: ['जोड़ें', 'टास्क जोड़ें', 'बनाएं', 'नया टास्क'],
-                complete: ['पूरा करें', 'खत्म', 'हो गया', 'पूर्ण'],
-                delete: ['हटाएं', 'मिटाएं', 'डिलीट'],
-                settings: ['सेटिंग्स खोलें', 'सेटिंग्स', 'सेटिंग'],
-                clear: ['पूरा किया हुआ हटाएं', 'साफ करें']
+                add: ['जोड़ें', 'टास्क जोड़ें', 'बनाएं', 'नया टास्क', 'डालें', 'लिखें'],
+                complete: ['पूरा करें', 'खत्म', 'हो गया', 'पूर्ण', 'टिक करें', 'पूरा'],
+                delete: ['हटाएं', 'मिटाएं', 'डिलीट', 'निकाले'],
+                settings: ['सेटिंग्स खोलें', 'सेटिंग्स', 'सेटिंग', 'विकल्प'],
+                clear: ['पूरा किया हुआ हटाएं', 'साफ करें', 'सब हटाएं']
             },
             'ne-NP': {
-                add: ['थप्नुहोस्', 'टास्क थप्नुहोस्', 'बनाउनुहोस्', 'नयाँ'],
-                complete: ['सकियो', 'समाप्त', 'भयो', 'पुरा भयो'],
-                delete: ['हटाउनुहोस्', 'मेट्नुहोस्', 'डिलीट'],
-                settings: ['सेटिङ्स', 'सेटिङ खोल्नुहोस्', 'सेटिङ'],
-                clear: ['सकिएको हटाउनुहोस्', 'साफ गर्नुहोस्']
+                add: ['थप्नुहोस्', 'टास्क थप्नुहोस्', 'बनाउनुहोस्', 'नयाँ', 'लेख्नुहोस्', 'थप'],
+                complete: ['सकियो', 'समाप्त', 'भयो', 'पुरा भयो', 'टिक गर्नुहोस्', 'सक्यो'],
+                delete: ['हटाउनुहोस्', 'मेट्नुहोस्', 'डिलीट', 'फ्याल्नुहोस्'],
+                settings: ['सेटिङ्स', 'सेटिङ खोल्नुहोस्', 'सेटिङ', 'विकल्प'],
+                clear: ['सकिएको हटाउनुहोस्', 'साफ गर्नुहोस्', 'सबै हटाउनुहोस्']
             }
         };
     }
@@ -238,11 +238,19 @@ class VoiceTaskApp {
         const lang = this.activeLang;
         const cmd = this.locales[lang] || this.locales['en-US'];
 
-        // Helper to check if text starts with any of the keywords
+        // Helper to check if text starts or ends with any of the keywords
+        // Optimized for SOV (Subject-Object-Verb) languages like Hindi/Nepali
         const getPayload = (keywords) => {
+            const lowerText = text.toLowerCase();
             for (const kw of keywords) {
-                if (text.startsWith(kw)) {
+                const lowerKw = kw.toLowerCase();
+                // Check Prefix (English style)
+                if (lowerText.startsWith(lowerKw)) {
                     return text.slice(kw.length).trim();
+                }
+                // Check Suffix (Hindi/Nepali style)
+                if (lowerText.endsWith(lowerKw)) {
+                    return text.slice(0, text.length - kw.length).trim();
                 }
             }
             return null;
