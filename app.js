@@ -14,7 +14,7 @@ class VoiceTaskApp {
     initializeElements() {
         this.voiceBtn = document.getElementById('voiceBtn');
         this.micIcon = document.getElementById('micIcon');
-        this.recordingIndicator = document.getElementById('recordingIndicator');
+        this.soundBars = document.getElementById('soundBars');
         this.statusText = document.getElementById('statusText');
         this.transcription = document.getElementById('transcription');
         this.transcriptText = document.getElementById('transcriptText');
@@ -25,6 +25,39 @@ class VoiceTaskApp {
         this.toastMessage = document.getElementById('toastMessage');
         
         this.voiceBtn.addEventListener('click', () => this.toggleRecording());
+        this.initializeAudioContext();
+    }
+    
+    async initializeAudioContext() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Create oscillator for beep sound
+            this.createBeepSound();
+        } catch (error) {
+            console.log('Audio context not available');
+        }
+    }
+    
+    createBeepSound() {
+        if (!this.audioContext) return;
+        
+        this.playBeep = (frequency = 800, duration = 100) => {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration / 1000);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + duration / 1000);
+        };
     }
     
     initializeSpeechRecognition() {
@@ -43,7 +76,8 @@ class VoiceTaskApp {
         this.recognition.onstart = () => {
             this.isRecording = true;
             this.updateRecordingUI(true);
-            this.statusText.textContent = 'Listening... Speak now!';
+            this.statusText.textContent = 'Listening...';
+            this.playBeep && this.playBeep(600, 80); // Start beep
         };
         
         this.recognition.onresult = (event) => {
@@ -114,7 +148,8 @@ class VoiceTaskApp {
     stopRecording() {
         this.isRecording = false;
         this.updateRecordingUI(false);
-        this.statusText.textContent = 'Click to start recording';
+        this.statusText.textContent = 'Tap to speak';
+        this.playBeep && this.playBeep(400, 80); // End beep
         
         if (this.recognition) {
             this.recognition.stop();
@@ -128,13 +163,11 @@ class VoiceTaskApp {
     
     updateRecordingUI(recording) {
         if (recording) {
-            this.voiceBtn.classList.add('recording', 'bg-red-500');
-            this.voiceBtn.classList.remove('from-indigo-500', 'to-purple-600');
-            this.recordingIndicator.classList.remove('hidden');
+            this.voiceBtn.classList.add('recording');
+            this.soundBars.classList.remove('hidden');
         } else {
-            this.voiceBtn.classList.remove('recording', 'bg-red-500');
-            this.voiceBtn.classList.add('from-indigo-500', 'to-purple-600');
-            this.recordingIndicator.classList.add('hidden');
+            this.voiceBtn.classList.remove('recording');
+            this.soundBars.classList.add('hidden');
         }
     }
     
@@ -254,11 +287,12 @@ class VoiceTaskApp {
     renderTasks() {
         if (this.tasks.length === 0) {
             this.taskList.innerHTML = `
-                <div class="text-center py-12 text-gray-400">
-                    <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                <div class="text-center py-16 text-gray-500 floating-hint">
+                    <svg class="w-20 h-20 mx-auto mb-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
                     </svg>
-                    <p>No tasks yet. Start by adding your first voice task!</p>
+                    <p class="text-lg font-medium mb-2">Ready when you are</p>
+                    <p class="text-sm">Tap the microphone and speak your first task</p>
                 </div>
             `;
             this.taskCount.textContent = '0';
@@ -272,7 +306,7 @@ class VoiceTaskApp {
         
         // Active tasks
         if (activeTasks.length > 0) {
-            html += '<div class="mb-6"><h4 class="text-sm font-medium text-gray-500 mb-3">Active Tasks</h4>';
+            html += '<div class="mb-6"><h4 class="text-sm font-medium text-gray-400 mb-3">ACTIVE</h4>';
             activeTasks.forEach(task => {
                 html += this.createTaskHTML(task);
             });
@@ -281,7 +315,7 @@ class VoiceTaskApp {
         
         // Completed tasks
         if (completedTasks.length > 0) {
-            html += '<div><h4 class="text-sm font-medium text-gray-500 mb-3">Completed</h4>';
+            html += '<div><h4 class="text-sm font-medium text-gray-400 mb-3">COMPLETED</h4>';
             completedTasks.forEach(task => {
                 html += this.createTaskHTML(task);
             });
@@ -308,25 +342,27 @@ class VoiceTaskApp {
     
     createTaskHTML(task) {
         return `
-            <div class="task-item flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 fade-in ${task.completed ? 'opacity-60' : ''}">
-                <input 
-                    type="checkbox" 
-                    id="checkbox-${task.id}"
-                    ${task.completed ? 'checked' : ''}
-                    class="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
-                >
-                <div class="flex-1">
-                    <p class="${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}">${task.text}</p>
-                    <p class="text-xs text-gray-400 mt-1">${this.formatDate(task.createdAt)}</p>
+            <div class="task-item glass-morphism rounded-xl p-4 fade-in ${task.completed ? 'opacity-50' : ''}">
+                <div class="flex items-start space-x-3">
+                    <input 
+                        type="checkbox" 
+                        id="checkbox-${task.id}"
+                        class="checkbox-custom mt-1"
+                        ${task.completed ? 'checked' : ''}
+                    >
+                    <div class="flex-1 min-w-0">
+                        <p class="${task.completed ? 'line-through text-gray-500' : 'text-white'} break-words">${task.text}</p>
+                        <p class="text-xs text-gray-500 mt-2">${this.formatDate(task.createdAt)}</p>
+                    </div>
+                    <button 
+                        id="delete-${task.id}"
+                        class="text-gray-400 hover:text-red-400 transition-colors p-2 flex-shrink-0"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
                 </div>
-                <button 
-                    id="delete-${task.id}"
-                    class="text-red-500 hover:text-red-700 transition-colors p-1"
-                >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                </button>
             </div>
         `;
     }
@@ -349,12 +385,12 @@ class VoiceTaskApp {
     
     showToast(message) {
         this.toastMessage.textContent = message;
-        this.toast.classList.remove('translate-y-20');
-        this.toast.classList.add('translate-y-0');
+        this.toast.classList.remove('translate-x-full');
+        this.toast.classList.add('translate-x-0');
         
         setTimeout(() => {
-            this.toast.classList.remove('translate-y-0');
-            this.toast.classList.add('translate-y-20');
+            this.toast.classList.remove('translate-x-0');
+            this.toast.classList.add('translate-x-full');
         }, 3000);
     }
     

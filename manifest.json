@@ -4,8 +4,8 @@
     "description": "A beautiful voice-only task management PWA",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#6366f1",
+    "background_color": "#0f0f0f",
+    "theme_color": "#0f0f0f",
     "orientation": "portrait-primary",
     "icons": [
         {
