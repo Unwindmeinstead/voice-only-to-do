@@ -245,21 +245,17 @@ class VoiceTaskApp {
 
                 this.analyser.getByteFrequencyData(dataArray);
 
+                const baseHeights = [6, 10, 16, 10, 6];
                 for (let i = 0; i < this.bars.length; i++) {
                     const bar = this.bars[i];
                     const sampleIndex = Math.floor((i / this.bars.length) * bufferLength);
                     const value = dataArray[sampleIndex];
 
-                    const height = 8 + (value / 255) * 32;
+                    const height = baseHeights[i] + (value / 255) * 14;
                     bar.style.height = `${height}px`;
 
-                    if (value > 120) {
-                        bar.style.background = '#0a84ff';
-                        bar.style.opacity = '1';
-                    } else {
-                        bar.style.background = '#000000';
-                        bar.style.opacity = '0.6';
-                    }
+                    bar.style.background = '#000000';
+                    bar.style.opacity = value > 50 ? '1' : '0.6';
                 }
             };
             draw();
