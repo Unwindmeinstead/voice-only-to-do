@@ -4,6 +4,7 @@ class VoiceTaskApp {
         this.isRecording = false;
         this.recognition = null;
         this.playBeep = null;
+        this.editingTaskId = null;
 
         this.initializeElements();
         this.initializeSpeechRecognition();
@@ -200,6 +201,14 @@ class VoiceTaskApp {
     processVoiceCommand(transcript) {
         const text = transcript.toLowerCase().trim();
 
+        // Handle Edit/Re-dictation if active
+        if (this.editingTaskId) {
+            this.updateTaskText(this.editingTaskId, transcript);
+            this.editingTaskId = null;
+            this.stopRecording(true);
+            return;
+        }
+
         // Settings (Universal)
         if (text.includes('settings') || text.includes('config')) {
             this.toggleSettings(true);
@@ -271,19 +280,32 @@ class VoiceTaskApp {
         }, 1500);
     }
 
-    completeTask(taskText) {
-        const task = this.tasks.find(t =>
-            t.text.toLowerCase().includes(taskText.toLowerCase()) && !t.completed
-        );
-
+    completeTask(text) {
+        const query = text.toLowerCase();
+        const task = this.tasks.find(t => t.text.toLowerCase().includes(query));
         if (task) {
-            task.completed = true;
+            task.completed = !task.completed;
             this.saveTasks();
             this.renderTasks();
-            this.showToast(`Task completed: ${task.text}`);
+            this.showToast(`Task ${task.completed ? 'completed' : 'unmarked'}`);
             this.stopRecording(true);
-        } else {
-            this.showToast(`Task not found: ${taskText}`);
+        }
+    }
+
+    editTask(id) {
+        this.editingTaskId = id;
+        this.renderTasks(); // Highlight editing state
+        this.startRecording();
+        this.showToast('Listening to update...');
+    }
+
+    updateTaskText(id, newText) {
+        const task = this.tasks.find(t => t.id === id);
+        if (task) {
+            task.text = newText;
+            this.saveTasks();
+            this.renderTasks();
+            this.triggerSuccessAnimation();
         }
     }
 
@@ -387,45 +409,37 @@ class VoiceTaskApp {
         const activeTasks = this.tasks.filter(t => !t.completed);
         const completedTasks = this.tasks.filter(t => t.completed);
 
-        let html = '';
+        this.taskList.innerHTML = ''; // Clear existing tasks
 
         if (activeTasks.length > 0) {
-            html += '<div class="section-label">ACTIVE</div>';
+            const sectionLabel = document.createElement('div');
+            sectionLabel.className = 'section-label';
+            sectionLabel.textContent = 'ACTIVE';
+            this.taskList.appendChild(sectionLabel);
             activeTasks.forEach(task => {
-                html += this.createTaskHTML(task);
+                this.taskList.appendChild(this.createTaskHTML(task));
             });
         }
 
         if (completedTasks.length > 0) {
-            html += '<div class="section-label">COMPLETED</div>';
+            const sectionLabel = document.createElement('div');
+            sectionLabel.className = 'section-label';
+            sectionLabel.textContent = 'COMPLETED';
+            this.taskList.appendChild(sectionLabel);
             completedTasks.forEach(task => {
-                html += this.createTaskHTML(task);
+                this.taskList.appendChild(this.createTaskHTML(task));
             });
         }
 
-        this.taskList.innerHTML = html;
         this.taskCount.textContent = String(activeTasks.length);
-
-        // Wire up interactions
-        this.tasks.forEach(task => {
-            const checkbox = document.getElementById(`task-check-${task.id}`);
-            const deleteBtn = document.getElementById(`task-delete-${task.id}`);
-
-            if (checkbox) {
-                checkbox.addEventListener('change', () => this.toggleTaskComplete(task.id));
-            }
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', () => this.deleteTaskById(task.id));
-            }
-        });
     }
 
     createTaskHTML(task) {
-        const completedClass = task.completed ? ' completed' : '';
-        const textClass = task.completed ? 'task-text completed' : 'task-text';
+        const div = document.createElement('div');
+        const isEditing = this.editingTaskId === task.id;
 
-        return `
-            <article class="task-card${completedClass}">
+        div.innerHTML = `
+            <article class="task-card ${task.completed ? 'completed' : ''} ${isEditing ? 'editing' : ''}" data-id="${task.id}">
                 <input
                     id="task-check-${task.id}"
                     class="task-checkbox"
@@ -434,21 +448,32 @@ class VoiceTaskApp {
                     aria-label="Mark task as ${task.completed ? 'active' : 'completed'}"
                 />
                 <div class="task-main">
-                    <div class="${textClass}">${this.escapeHtml(task.text)}</div>
+                    <div class="${task.completed ? 'task-text completed' : 'task-text'}">${this.escapeHtml(task.text)}</div>
                     <div class="task-meta">${this.formatRelativeDate(task.createdAt)}</div>
                 </div>
-                <button
-                    id="task-delete-${task.id}"
-                    class="task-delete"
-                    aria-label="Delete task"
-                >
-                    <!-- small x icon -->
-                    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-                    </svg>
-                </button>
+                <div style="display: flex; gap: 4px;">
+                    <button class="task-edit" title="Re-dictate" aria-label="Re-dictate task">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </button>
+                    <button class="task-delete" title="Delete" aria-label="Delete task">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
             </article>
         `;
+
+        div.querySelector('.task-checkbox').addEventListener('change', () => this.toggleTaskComplete(task.id));
+        div.querySelector('.task-edit').addEventListener('click', () => this.editTask(task.id));
+        div.querySelector('.task-delete').addEventListener('click', () => this.deleteTaskById(task.id));
+
+        return div.firstElementChild; // Return the article element
     }
 
     escapeHtml(text) {

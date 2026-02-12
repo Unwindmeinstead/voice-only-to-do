@@ -211,26 +211,52 @@
             opacity: 0.55;
         }
 
-        .task-delete {
+        .task-delete,
+        .task-edit {
             border: none;
             background: none;
             cursor: pointer;
-            padding: 6px;
+            padding: 8px;
             border-radius: 999px;
-            color: rgba(255, 255, 255, 0.45);
+            color: rgba(255, 255, 255, 0.35);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.2s ease, color 0.2s ease, transform 0.1s ease;
+            transition: all 0.2s ease;
+        }
+
+        .task-edit:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .task-delete:hover {
-            background: rgba(248, 113, 113, 0.14);
-            color: rgba(248, 113, 113, 0.95);
+            background: rgba(248, 113, 113, 0.12);
+            color: rgba(248, 113, 113, 0.9);
         }
 
-        .task-delete:active {
-            transform: scale(0.96);
+        .task-card.editing {
+            border-color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .task-card.editing .task-text {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .task-card.editing::before {
+            content: 'EDITING';
+            position: absolute;
+            right: 14px;
+            top: -8px;
+            background: #ffffff;
+            color: #000000;
+            font-size: 8px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.1em;
         }
 
         .empty-state {
