@@ -254,7 +254,7 @@
         .mic-dock {
             position: fixed;
             left: 50%;
-            bottom: calc(18px + env(safe-area-inset-bottom));
+            bottom: calc(20px + env(safe-area-inset-bottom));
             transform: translateX(-50%);
             z-index: 20;
             display: flex;
@@ -264,25 +264,34 @@
         }
 
         .mic-button {
-            width: 80px;
-            height: 80px;
+            width: 72px;
+            height: 72px;
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.24);
-            background: radial-gradient(circle at top, rgba(255, 255, 255, 0.18), rgba(12, 12, 15, 0.98));
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: radial-gradient(circle at top, rgba(255, 255, 255, 0.14), rgba(8, 8, 10, 0.98));
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             pointer-events: auto;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
             position: relative;
         }
 
+        .mic-button::before {
+            content: '';
+            position: absolute;
+            inset: 6px;
+            border-radius: inherit;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            opacity: 0.8;
+        }
+
         .mic-button:hover {
-            transform: translateY(-1px) scale(1.03);
-            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+            border-color: rgba(255, 255, 255, 0.32);
         }
 
         .mic-button:active {
@@ -290,34 +299,22 @@
         }
 
         .mic-button.recording {
-            background: radial-gradient(circle at top, rgba(252, 165, 165, 0.22), rgba(15, 15, 15, 0.98));
-            border-color: rgba(248, 113, 113, 0.75);
-            animation: micPulse 1.8s ease-in-out infinite;
+            background: radial-gradient(circle at top, rgba(248, 113, 113, 0.2), rgba(8, 8, 10, 0.98));
+            border-color: rgba(248, 113, 113, 0.9);
         }
 
-        @keyframes micPulse {
-            0%, 100% {
-                transform: translateY(0) scale(1);
-            }
-            50% {
-                transform: translateY(-2px) scale(1.04);
-            }
+        .mic-button.recording::before {
+            border-color: rgba(248, 113, 113, 0.6);
         }
 
         .mic-icon {
-            width: 34px;
-            height: 34px;
+            width: 30px;
+            height: 30px;
             stroke: #ffffff;
-            stroke-width: 1.5;
+            stroke-width: 1.4;
             fill: none;
             stroke-linecap: round;
             stroke-linejoin: round;
-            transition: transform 0.24s ease, opacity 0.24s ease;
-        }
-
-        .mic-button.recording .mic-icon {
-            opacity: 0.9;
-            transform: scale(1.04);
         }
 
         .transcription {
