@@ -1,4 +1,14 @@
 class VoiceTaskApp {
+    // Groq API Configuration - loaded from settings
+    get GROQ_API_KEY() {
+        const settings = JSON.parse(localStorage.getItem('doneSettings') || '{}');
+        return settings.groqApiKey || '';
+    }
+    
+    get GROQ_MODEL() {
+        return 'llama-3.1-8b-instant';
+    }
+
     // Fast minimal AI classifier - runs instantly
     classifyTask(text) {
         const t = text.toLowerCase();
@@ -28,6 +38,144 @@ class VoiceTaskApp {
         }
         
         return { category, priority };
+    }
+
+    // Groq AI - Enhanced task understanding
+    async processWithAI(text) {
+        const aiQueryPatterns = [
+            /^(what('s| is)|summarize|how many|suggest|help me)/i,
+            /what do i have/i,
+            /show me (my )?(tasks|todos)/i,
+            /what('s| is) (urgent|important|pending)/i,
+            /list.*tasks/i,
+            /hey ai/i,
+            /ask ai/i
+        ];
+        
+        const isAIQuery = aiQueryPatterns.some(pattern => pattern.test(text));
+        
+        if (isAIQuery) {
+            const response = await this.callGroqAI(text);
+            if (response) {
+                this.showToast(response, 5000);
+                this.speakText(response);
+                return true;
+            }
+        }
+        
+        // Check for task breakdown
+        if (/break down|divide|split/i.test(text)) {
+            const taskMatch = text.replace(/break down|divide|split/i, '').trim();
+            if (taskMatch.length > 5) {
+                await this.breakdownTask(taskMatch);
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    async callGroqAI(userMessage) {
+        if (!this.GROQ_API_KEY) {
+            this.showToast('Add Groq API key in settings to enable AI');
+            return null;
+        }
+        
+        try {
+            const taskList = this.tasks.filter(t => !t.completed).slice(0, 10).map(t => `- ${t.text} (${t.category || 'personal'})`).join('\n');
+            const completedCount = this.tasks.filter(t => t.completed).length;
+            
+            const systemPrompt = `You are a helpful task assistant for a voice-first todo app. Current pending tasks:\n${taskList || 'No tasks'}\n\nCompleted: ${completedCount} tasks. Be concise and helpful.`;
+            
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.GROQ_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: this.GROQ_MODEL,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userMessage }
+                    ],
+                    max_tokens: 150,
+                    temperature: 0.7
+                })
+            });
+            
+            if (!response.ok) throw new Error('API Error');
+            
+            const data = await response.json();
+            return data.choices?.[0]?.message?.content || null;
+        } catch (error) {
+            console.log('AI Error:', error.message);
+            return null;
+        }
+    }
+
+    async breakdownTask(taskText) {
+        if (!this.GROQ_API_KEY) {
+            this.showToast('Add Groq API key in settings to enable AI');
+            return;
+        }
+        
+        try {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.GROQ_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: this.GROQ_MODEL,
+                    messages: [
+                        { role: 'system', content: 'Break down this task into 3-5 smaller actionable subtasks. Return ONLY a JSON array of strings, nothing else. Example: ["Step 1", "Step 2", "Step 3"]' },
+                        { role: 'user', content: taskText }
+                    ],
+                    max_tokens: 200,
+                    temperature: 0.5
+                })
+            });
+            
+            if (!response.ok) throw new Error('API Error');
+            
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content;
+            
+            const subtasks = JSON.parse(content.replace(/```json|```/g, ''));
+            
+            if (Array.isArray(subtasks)) {
+                subtasks.slice(0, 5).forEach(subtask => {
+                    if (subtask && subtask.length > 2) {
+                        this.addTask(subtask, 'task');
+                    }
+                });
+                this.showToast(`Created ${subtasks.length} subtasks!`);
+            }
+        } catch (error) {
+            console.log('Breakdown Error:', error.message);
+        }
+    }
+
+    showToast(message, duration = 3000) {
+        if (!this.toastMessage || !this.toast) return;
+        this.toastMessage.textContent = message;
+        this.toast.classList.add('show');
+
+        setTimeout(() => {
+            this.toast.classList.remove('show');
+        }, duration);
+    }
+
+    speakText(text) {
+        if ('speechSynthesis' in window) {
+            speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.1;
+            utterance.pitch = 1;
+            speechSynthesis.speak(utterance);
+        }
     }
 
     constructor() {
@@ -112,6 +260,14 @@ class VoiceTaskApp {
             this.updateSyncStatus();
             this.saveSettings();
         });
+
+        // Groq API Key live saving
+        const groqInput = document.getElementById('groqApiKey');
+        if (groqInput) {
+            groqInput.addEventListener('input', () => {
+                this.saveSettings();
+            });
+        }
 
         // Calendar Listeners
         this.openCalendar = document.getElementById('openCalendar');
@@ -390,6 +546,9 @@ class VoiceTaskApp {
             return;
         }
 
+        // Check for AI queries
+        this.processWithAI(text);
+
         // Type Intelligence (Task / Notification / Event)
         let type = 'task';
         let finalContent = text;
@@ -548,11 +707,13 @@ class VoiceTaskApp {
     saveSettings() {
         const url = this.syncUrlInput.value.trim();
         const isEnabled = document.getElementById('toggle-sync').classList.contains('active');
+        const groqKey = document.getElementById('groqApiKey')?.value.trim() || '';
 
         localStorage.setItem('doneSettings', JSON.stringify({
             syncUrl: url,
             syncEnabled: isEnabled,
-            user: this.user
+            user: this.user,
+            groqApiKey: groqKey
         }));
 
         this.updateSyncStatus();
@@ -585,6 +746,12 @@ class VoiceTaskApp {
             }
             this.user = settings.user || null;
             if (this.user) this.updateUserUI();
+            
+            // Load Groq API key
+            const groqInput = document.getElementById('groqApiKey');
+            if (groqInput && settings.groqApiKey) {
+                groqInput.value = settings.groqApiKey;
+            }
         }
         this.updateSyncStatus();
     }
