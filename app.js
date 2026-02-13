@@ -1,12 +1,27 @@
 class VoiceTaskApp {
-    // Groq API Configuration - loaded from settings
+    // Settings getters
+    get settings() {
+        return JSON.parse(localStorage.getItem('doneSettings') || '{}');
+    }
+    
     get GROQ_API_KEY() {
-        const settings = JSON.parse(localStorage.getItem('doneSettings') || '{}');
-        return settings.groqApiKey || '';
+        return this.settings.groqApiKey || '';
     }
     
     get GROQ_MODEL() {
         return 'llama-3.1-8b-instant';
+    }
+    
+    get aiTtsEnabled() {
+        return this.settings.aiTtsEnabled !== false;
+    }
+    
+    get soundsEnabled() {
+        return this.settings.soundsEnabled !== false;
+    }
+    
+    get animationsEnabled() {
+        return this.settings.animationsEnabled !== false;
     }
 
     // Fast minimal AI classifier - runs instantly
@@ -169,6 +184,7 @@ class VoiceTaskApp {
     }
 
     speakText(text) {
+        if (!this.aiTtsEnabled) return;
         if ('speechSynthesis' in window) {
             speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
@@ -266,6 +282,63 @@ class VoiceTaskApp {
         if (groqInput) {
             groqInput.addEventListener('input', () => {
                 this.saveSettings();
+            });
+        }
+
+        // Settings toggles auto-save
+        document.querySelectorAll('.settings-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                toggle.classList.toggle('active');
+                this.saveSettings();
+                this.playPing && this.playPing();
+            });
+        });
+
+        // Export tasks
+        const exportTasksData = document.getElementById('exportTasksData');
+        if (exportTasksData) {
+            exportTasksData.addEventListener('click', () => {
+                const data = {
+                    tasks: this.tasks,
+                    history: this.history,
+                    exportedAt: new Date().toISOString()
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `done-backup-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                this.showToast('Tasks exported!');
+            });
+        }
+
+        // Import tasks
+        const importTasksData = document.getElementById('importTasksData');
+        if (importTasksData) {
+            importTasksData.addEventListener('click', () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            const text = await file.text();
+                            const data = JSON.parse(text);
+                            if (data.tasks && Array.isArray(data.tasks)) {
+                                this.tasks = data.tasks;
+                                this.saveTasks();
+                                this.renderTasks();
+                                this.showToast(`Imported ${data.tasks.length} tasks!`);
+                            }
+                        } catch (err) {
+                            this.showToast('Invalid file format');
+                        }
+                    }
+                };
+                input.click();
             });
         }
 
@@ -602,7 +675,7 @@ class VoiceTaskApp {
     }
 
     triggerSuccessAnimation() {
-        if (!this.micButton) return;
+        if (!this.animationsEnabled || !this.micButton) return;
         // Quick flash to indicate success, then immediately back to ready state
         this.micButton.classList.add('success');
         setTimeout(() => {
@@ -706,14 +779,22 @@ class VoiceTaskApp {
 
     saveSettings() {
         const url = this.syncUrlInput.value.trim();
-        const isEnabled = document.getElementById('toggle-sync').classList.contains('active');
+        const syncEnabled = document.getElementById('toggle-sync').classList.contains('active');
         const groqKey = document.getElementById('groqApiKey')?.value.trim() || '';
+        
+        // New toggles
+        const aiTtsEnabled = document.getElementById('toggle-ai-tts')?.classList.contains('active') ?? true;
+        const soundsEnabled = document.getElementById('toggle-sounds')?.classList.contains('active') ?? true;
+        const animationsEnabled = document.getElementById('toggle-animations')?.classList.contains('active') ?? true;
 
         localStorage.setItem('doneSettings', JSON.stringify({
             syncUrl: url,
-            syncEnabled: isEnabled,
+            syncEnabled: syncEnabled,
             user: this.user,
-            groqApiKey: groqKey
+            groqApiKey: groqKey,
+            aiTtsEnabled: aiTtsEnabled,
+            soundsEnabled: soundsEnabled,
+            animationsEnabled: animationsEnabled
         }));
 
         this.updateSyncStatus();
@@ -740,10 +821,31 @@ class VoiceTaskApp {
         if (saved) {
             const settings = JSON.parse(saved);
             this.syncUrlInput.value = settings.syncUrl || '';
-            const toggle = document.getElementById('toggle-sync');
+            
+            // Sync toggle
+            const toggleSync = document.getElementById('toggle-sync');
             if (settings.syncEnabled) {
-                toggle.classList.add('active');
+                toggleSync.classList.add('active');
             }
+            
+            // AI TTS toggle
+            const toggleAiTts = document.getElementById('toggle-ai-tts');
+            if (settings.aiTtsEnabled !== false) {
+                toggleAiTts.classList.add('active');
+            }
+            
+            // Sounds toggle
+            const toggleSounds = document.getElementById('toggle-sounds');
+            if (settings.soundsEnabled !== false) {
+                toggleSounds.classList.add('active');
+            }
+            
+            // Animations toggle
+            const toggleAnimations = document.getElementById('toggle-animations');
+            if (settings.animationsEnabled !== false) {
+                toggleAnimations.classList.add('active');
+            }
+            
             this.user = settings.user || null;
             if (this.user) this.updateUserUI();
             

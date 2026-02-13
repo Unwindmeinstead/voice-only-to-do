@@ -1102,8 +1102,41 @@
                 <div class="settings-group">
                     <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
                         <div class="settings-item-label">Groq AI Key</div>
-                        <div class="settings-item-desc">Free AI for smart queries</div>
+                        <div class="settings-item-desc">Free AI for smart queries (get free key at console.groq.com)</div>
                         <input type="password" id="groqApiKey" class="settings-input" placeholder="gsk_...">
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" style="justify-content: space-between;">
+                        <div class="settings-item-label">AI Responses</div>
+                        <div class="settings-toggle" id="toggle-ai-tts"></div>
+                    </div>
+                    <div class="settings-item-desc" style="padding-left: 0; margin-top: -8px;">Speak AI responses aloud</div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" style="justify-content: space-between;">
+                        <div class="settings-item-label">Sound Effects</div>
+                        <div class="settings-toggle" id="toggle-sounds"></div>
+                    </div>
+                    <div class="settings-item-desc" style="padding-left: 0; margin-top: -8px;">Play sounds on task actions</div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" style="justify-content: space-between;">
+                        <div class="settings-item-label">Task Animations</div>
+                        <div class="settings-toggle active" id="toggle-animations"></div>
+                    </div>
+                    <div class="settings-item-desc" style="padding-left: 0; margin-top: -8px;">Show success animations</div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" id="exportTasksData" style="cursor: pointer;">
+                        <div class="settings-item-label" style="color: #0a84ff; font-weight: 500;">Export Tasks (JSON)</div>
+                    </div>
+                    <div class="settings-item" id="importTasksData" style="cursor: pointer;">
+                        <div class="settings-item-label" style="color: #0a84ff; font-weight: 500;">Import Tasks</div>
                     </div>
                 </div>
 
