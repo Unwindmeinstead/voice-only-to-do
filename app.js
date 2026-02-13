@@ -255,6 +255,42 @@ class VoiceTaskApp {
             this.toggleSettings(false);
         });
 
+        // Test AI button
+        const testAiBtn = document.getElementById('testAiBtn');
+        if (testAiBtn) {
+            testAiBtn.addEventListener('click', async () => {
+                const apiKey = document.getElementById('groqApiKey').value.trim();
+                if (!apiKey) {
+                    this.showToast('Enter API key first');
+                    return;
+                }
+                testAiBtn.textContent = 'Testing...';
+                try {
+                    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + apiKey,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: 'llama-3.1-8b-instant',
+                            messages: [{ role: 'user', content: 'Hi' }],
+                            max_tokens: 10
+                        })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.showToast('AI Works!');
+                    } else {
+                        this.showToast('Error: ' + response.status);
+                    }
+                } catch (e) {
+                    this.showToast('Error: ' + e.message);
+                }
+                testAiBtn.textContent = 'Test';
+            });
+        }
+
         // Settings interactivity
         document.querySelectorAll('.settings-toggle').forEach(toggle => {
             toggle.addEventListener('click', () => {

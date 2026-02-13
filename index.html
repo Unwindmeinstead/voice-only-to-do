@@ -1102,8 +1102,11 @@
                 <div class="settings-group">
                     <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
                         <div class="settings-item-label">Groq AI Key</div>
-                        <div class="settings-item-desc">Free AI for smart queries (get free key at console.groq.com)</div>
-                        <input type="password" id="groqApiKey" class="settings-input" placeholder="gsk_...">
+                        <div class="settings-item-desc">Free AI (get free key at console.groq.com)</div>
+                        <div style="display:flex;gap:8px;width:100%;">
+                            <input type="password" id="groqApiKey" class="settings-input" placeholder="gsk_..." style="flex:1">
+                            <button id="testAiBtn" style="background:#0a84ff;color:white;border:none;border-radius:8px;padding:0 16px;font-size:12px;font-weight:600;cursor:pointer">Test</button>
+                        </div>
                     </div>
                 </div>
 
