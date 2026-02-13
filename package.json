@@ -1,0 +1,25 @@
+{
+  "name": "voice-only-to-do",
+  "version": "1.0.0",
+  "description": "A beautiful, minimal Progressive Web App (PWA) focused entirely on voice input for task management.",
+  "main": "app-minimal.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Unwindmeinstead/voice-only-to-do.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Unwindmeinstead/voice-only-to-do/issues"
+  },
+  "homepage": "https://github.com/Unwindmeinstead/voice-only-to-do#readme",
+  "devDependencies": {
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/ios": "^8.1.0"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "appId": "com.done.voicetodo",
+  "appName": "Done",
+  "webDir": "public",
+  "bundledWebRuntime": false,
+  "ios": {
+    "allowMixedContent": true
+  }
+}

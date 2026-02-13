@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Done — Smart Voice Productivity</title>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            background: #040407;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, -webkit-system-font, 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .app-shell {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 18px 8px;
+            z-index: 10;
+        }
+
+        .top-center {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+        }
+
+        .top-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .day-label {
+            font-size: 12px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            font-weight: 500;
+            opacity: 0.65;
+        }
+
+        .date-label {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .top-right {
+            text-align: right;
+        }
+
+        .task-count {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .task-caption {
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        .content {
+            position: relative;
+            flex: 1;
+            padding: 8px 18px 120px;
+            overflow: hidden;
+        }
+
+        .task-list {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .task-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .task-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            opacity: 0.55;
+            margin: 12px 0 8px;
+        }
+
+        .section-label:first-of-type {
+            margin-top: 4px;
+        }
+
+        .task-card {
+            position: relative;
+            margin-bottom: 10px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(18, 18, 20, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, opacity 0.12s ease;
+        }
+
+        .task-card:hover {
+            transform: translateY(-1px);
+            border-color: rgba(255, 255, 255, 0.14);
+        }
+
+        .task-card.completed {
+            opacity: 0.45;
+        }
+
+        .task-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            margin-top: 2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.32);
+            background: rgba(0, 0, 0, 0.8);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            outline: none;
+            transition: all 0.22s ease;
+        }
+
+        .task-checkbox::after {
+            content: '';
+            width: 9px;
+            height: 9px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            transform: scale(0);
+            transition: transform 0.18s ease-out;
+        }
+
+        .task-checkbox:checked {
+            border-color: rgba(74, 222, 128, 0.9);
+            background: radial-gradient(circle at top, rgba(74, 222, 128, 0.25), rgba(0, 0, 0, 0.9));
+            box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.12);
+        }
+
+        .task-checkbox:checked::after {
+            transform: scale(1);
+        }
+
+        .task-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .task-text {
+            font-size: 15px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .task-text.completed {
+            text-decoration: line-through;
+            text-decoration-thickness: 1px;
+            opacity: 0.7;
+        }
+
+        .task-meta {
+            margin-top: 6px;
+            font-size: 11px;
+            opacity: 0.55;
+        }
+
+        .task-delete,
+        .task-edit {
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 999px;
+            color: rgba(255, 255, 255, 0.35);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .task-edit:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .task-delete:hover {
+            background: rgba(248, 113, 113, 0.12);
+            color: rgba(248, 113, 113, 0.9);
+        }
+
+        .task-card.editing {
+            border-color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .task-card.editing .task-text {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .task-card.editing::before {
+            content: 'EDITING';
+            position: absolute;
+            right: 14px;
+            top: -8px;
+            background: #ffffff;
+            color: #000000;
+            font-size: 8px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.1em;
+        }
+
+        .empty-state {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            flex-direction: column;
+            gap: 10px;
+            opacity: 0.7;
+        }
+
+        .empty-title {
+            font-size: 15px;
+            font-weight: 400;
+        }
+
+        .empty-caption {
+            font-size: 13px;
+            opacity: 0.6;
+        }
+
+        .mic-button {
+            width: 72px;
+            height: 72px;
+            border-radius: 999px;
+            border: none;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.4),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            position: fixed;
+            left: 50%;
+            bottom: calc(15px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 3000;
+            overflow: hidden;
+        }
+
+        .mic-button::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.8), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .mic-button:hover {
+            transform: translateX(-50%) translateY(-2px);
+            background: #ffffff;
+            box-shadow:
+                0 15px 40px rgba(0, 0, 0, 0.5),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+        }
+
+        .mic-button:active {
+            transform: translateX(-50%) scale(0.94);
+        }
+
+        .mic-button.recording {
+            background: #ffffff;
+            transform: translateX(-50%) scale(1.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        .mic-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .bar {
+            width: 3.5px;
+            background: #000000;
+            border-radius: 99px;
+            opacity: 0.85;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Offline heights */
+        .bar-1 {
+            height: 6px;
+        }
+
+        .bar-2 {
+            height: 10px;
+        }
+
+        .bar-3 {
+            height: 16px;
+            opacity: 0.9;
+            /* High contrast for center bar */
+        }
+
+        /* Center bar slightly more prominent */
+        .bar-4 {
+            height: 10px;
+        }
+
+        .bar-5 {
+            height: 6px;
+        }
+
+        .mic-button.recording .bar {
+            opacity: 1;
+            transition: height 0.05s ease;
+        }
+
+        .mic-button.success .bar {
+            animation: successPulse 0.2s ease-out forwards;
+            background: #000000;
+            opacity: 1;
+        }
+
+        .mic-button.success {
+            transform: translateX(-50%) scale(1.1);
+            background: #ffffff;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.4);
+        }
+
+        @keyframes successPulse {
+            0% {
+                transform: scaleY(1);
+            }
+
+            50% {
+                height: 24px;
+                transform: scaleY(1.2);
+            }
+
+            100% {
+                height: 8px;
+                transform: scaleY(0.8);
+                opacity: 0.7;
+            }
+        }
+
+        .mic-button.success .bar-1 {
+            animation-delay: 0s;
+        }
+
+        .mic-button.success .bar-2 {
+            animation-delay: 0.02s;
+        }
+
+        .mic-button.success .bar-3 {
+            animation-delay: 0.04s;
+        }
+
+        .mic-button.success .bar-4 {
+            animation-delay: 0.06s;
+        }
+
+        .mic-button.success .bar-5 {
+            animation-delay: 0.08s;
+        }
+
+        @keyframes eq {
+
+            0%,
+            100% {
+                height: 8px;
+                transform: scaleY(1);
+            }
+
+            50% {
+                height: 24px;
+                transform: scaleY(1.1);
+            }
+        }
+
+        .transcription {
+            position: fixed;
+            left: 50%;
+            bottom: calc(220px + env(safe-area-inset-bottom));
+            transform: translateX(-50%) translateY(20px);
+            width: 90%;
+            max-width: 600px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 2500;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            text-align: center;
+        }
+
+        .transcription.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Dictation Focus Mode */
+        .app-shell {
+            transition: filter 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease;
+        }
+
+        body.recording-mode .app-shell {
+            filter: blur(10px) brightness(0.7);
+            transform: scale(0.98);
+            opacity: 0.85;
+            pointer-events: none;
+        }
+
+        body.recording-mode .mic-button {
+            transform: translateX(-50%) scale(1.1);
+            background: #ffffff;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
+        }
+
+        body.recording-mode .transcription {
+            opacity: 1;
+        }
+
+        body.recording-mode #transcriptText {
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        #transcriptText {
+            font-family: 'Poppins', sans-serif;
+            font-size: 20px;
+            font-weight: 500;
+            line-height: 1.4;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            letter-spacing: -0.01em;
+        }
+
+        #transcriptText::after {
+            content: '';
+            display: inline-block;
+            width: 2px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.5);
+            margin-left: 4px;
+            vertical-align: middle;
+            animation: blink 1s infinite alternate;
+        }
+
+        @keyframes blink {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            top: calc(24px + env(safe-area-inset-top));
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(255, 255, 255, 0.95);
+            color: #000000;
+            border-radius: 999px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            pointer-events: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 30;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Settings Modal */
+        /* iOS 17 Premium Modal System */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.32, 1, 0.67, 1);
+            z-index: 2000;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: #000000;
+            width: 100%;
+            height: 92%;
+            border-radius: 40px 40px 0 0;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.32, 1, 0.67, 1);
+            overflow: hidden;
+            box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: none;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            padding: 24px 24px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #000000;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        /* Drag Handle for iOS feel */
+        .modal-header::after {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+
+        .close-modal {
+            color: #0a84ff;
+            font-size: 18px;
+            font-weight: 500;
+            background: rgba(10, 132, 255, 0.1);
+            border: none;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+
+        .close-modal:active {
+            transform: scale(0.95);
+            background: rgba(10, 132, 255, 0.2);
+        }
+
+        .settings-list {
+            flex: 1;
+            padding: 8px 20px 40px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            background: #000000;
+        }
+
+        .settings-group {
+            background: #111111;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .settings-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .settings-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.2s;
+        }
+
+        .settings-item:active {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+
+        .settings-toggle {
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 99px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .settings-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: #ffffff;
+            border-radius: 99px;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .settings-toggle.active {
+            background: #ffffff;
+        }
+
+        .settings-toggle.active::after {
+            left: 22px;
+            background: #000000;
+        }
+
+        .action-button {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: rgba(255, 255, 255, 0.9);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-transform: uppercase;
+        }
+
+        .action-button:hover {
+            background: #ffffff;
+            color: #000000;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .action-button:active {
+            transform: scale(0.95) translateY(0);
+        }
+
+        .settings-item-label {
+            font-size: 16px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .settings-item-desc {
+            font-size: 13px;
+            font-weight: 400;
+            opacity: 0.5;
+            margin-top: 4px;
+        }
+
+        .settings-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 14px 18px;
+            color: #ffffff;
+            font-size: 16px;
+            margin-top: 16px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .settings-input:focus {
+            border-color: #0a84ff;
+            background: rgba(10, 132, 255, 0.05);
+        }
+
+        /* Modern Expansive Calendar */
+        .calendar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            padding: 8px 0;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 4px;
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+
+        .calendar-header span {
+            background: linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .calendar-header button {
+            background: rgba(255, 255, 255, 0.06);
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-header button:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 20px;
+            overflow: hidden;
+            padding: 8px;
+        }
+
+        .calendar-weekday {
+            font-size: 10px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.35);
+            text-transform: uppercase;
+            padding: 12px 0 8px;
+            text-align: center;
+            letter-spacing: 0.08em;
+        }
+
+        .calendar-day {
+            background: transparent;
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.6);
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            cursor: pointer;
+            gap: 2px;
+        }
+
+        .calendar-day:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .calendar-day.selected {
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+        }
+
+        .calendar-day.today span {
+            color: #000000;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 0%, #e0e0e0 100%);
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .calendar-day.today {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .calendar-dot {
+            width: 4px;
+            height: 4px;
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+        }
+
+        /* Day Detail View */
+        .day-details {
+            background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .day-details-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+        }
+
+        .day-task-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .day-task-bullet {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .day-task-text {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.9);
+            flex: 1;
+        }
+
+        .settings-status {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+        }
+
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .task-card.notification .type-badge {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        .task-card.event .type-badge {
+            color: #f472b6;
+            background: rgba(244, 114, 182, 0.1);
+        }
+
+        .task-card.task .type-badge {
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        .type-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .task-card.note .type-badge {
+            color: #60a5fa;
+            background: rgba(96, 165, 250, 0.1);
+        }
+
+        .task-card.reminder .type-badge {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        .task-card.task .type-badge {
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        @media (min-width: 768px) {
+            .app-shell {
+                border-radius: 24px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                margin-top: 12px;
+                margin-bottom: 12px;
+                overflow: hidden;
+                box-shadow:
+                    0 40px 140px rgba(0, 0, 0, 0.95),
+                    0 0 0 1px rgba(255, 255, 255, 0.02);
+            }
+
+            body {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="particles" class="background-particles"></div>
+
+    <div class="app-shell">
+        <header class="top-bar">
+            <div class="top-left" id="openCalendar" style="cursor: pointer;">
+                <div class="day-label" id="dayLabel">Today</div>
+                <div id="dateLabel" class="date-label"></div>
+            </div>
+
+            <div class="top-center"></div>
+
+            <div class="top-right" id="openSettings" style="cursor: pointer; text-align: right;">
+                <div class="task-count" id="taskCount">0</div>
+                <div class="task-caption">items</div>
+            </div>
+        </header>
+
+        <main class="content">
+            <div id="taskList" class="task-list"></div>
+        </main>
+    </div>
+
+    <button id="micButton" class="mic-button" aria-label="Toggle voice capture">
+        <div class="mic-icon">
+            <div class="bar bar-1"></div>
+            <div class="bar bar-2"></div>
+            <div class="bar bar-3"></div>
+            <div class="bar bar-4"></div>
+            <div class="bar bar-5"></div>
+        </div>
+    </button>
+
+    <div id="transcription" class="transcription">
+        <div id="transcriptText"></div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toastMessage"></span>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Settings</div>
+                <button id="closeSettings" class="close-modal">Done</button>
+            </div>
+            <div class="settings-list">
+                <div class="settings-group">
+                    <div class="settings-item" id="userAuth" style="padding: 16px;">
+                        <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+                            <div id="g_id_onload" data-client_id="YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+                                data-context="signin" data-ux_mode="popup" data-callback="handleCredentialResponse"
+                                data-auto_prompt="false">
+                            </div>
+                            <div class="g_id_signin" data-type="standard" data-shape="pill" data-theme="filled_black"
+                                data-text="signin_with" data-size="medium" data-logo_alignment="left"></div>
+                            <div id="userProfile" style="display: none; flex: 1; align-items: center; gap: 12px;">
+                                <div
+                                    style="border-radius: 99px; overflow: hidden; width: 36px; height: 36px; border: 1px solid rgba(255,255,255,0.1);">
+                                    <img id="userAvatar" src="" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                <div>
+                                    <div id="userName" style="font-size: 14px; font-weight: 500;">User</div>
+                                    <div style="font-size: 11px; opacity: 0.5;">Signed In</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
+                        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                            <div class="settings-item-label">Cloud Sync</div>
+                            <div class="settings-toggle" id="toggle-sync"></div>
+                        </div>
+                        <div class="settings-item-desc" id="syncStatus">Ready to connect</div>
+                        <input type="text" id="syncUrl" class="settings-input" placeholder="Google Script Exec URL">
+                    </div>
+                    <div class="settings-item" id="forceSync" style="cursor: pointer;">
+                        <div class="settings-item-label" style="color: #0a84ff; font-weight: 500;">Sync Now</div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
+                        <div class="settings-item-label">Groq AI Key</div>
+                        <div class="settings-item-desc">Free AI (get free key at console.groq.com)</div>
+                        <div style="display:flex;gap:8px;width:100%;">
+                            <input type="password" id="groqApiKey" class="settings-input" placeholder="gsk_..." style="flex:1">
+                            <button id="testAiBtn" style="background:#0a84ff;color:white;border:none;border-radius:8px;padding:0 16px;font-size:12px;font-weight:600;cursor:pointer">Test</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" style="justify-content: space-between;">
+                        <div class="settings-item-label">AI Responses</div>
+                        <div class="settings-toggle" id="toggle-ai-tts"></div>
+                    </div>
+                    <div class="settings-item-desc" style="padding-left: 0; margin-top: -8px;">Speak AI responses aloud</div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" style="justify-content: space-between;">
+                        <div class="settings-item-label">Sound Effects</div>
+                        <div class="settings-toggle" id="toggle-sounds"></div>
+                    </div>
+                    <div class="settings-item-desc" style="padding-left: 0; margin-top: -8px;">Play sounds on task actions</div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" style="justify-content: space-between;">
+                        <div class="settings-item-label">Task Animations</div>
+                        <div class="settings-toggle active" id="toggle-animations"></div>
+                    </div>
+                    <div class="settings-item-desc" style="padding-left: 0; margin-top: -8px;">Show success animations</div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" id="exportTasksData" style="cursor: pointer;">
+                        <div class="settings-item-label" style="color: #0a84ff; font-weight: 500;">Export Tasks (JSON)</div>
+                    </div>
+                    <div class="settings-item" id="importTasksData" style="cursor: pointer;">
+                        <div class="settings-item-label" style="color: #0a84ff; font-weight: 500;">Import Tasks</div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-item" id="exportTasks" style="cursor: pointer;">
+                        <div class="settings-item-label" style="color: #ff3b30; font-weight: 500;">Clear All Data</div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; font-size: 11px; opacity: 0.3; padding: 20px 0;">
+                    DONE — VERSION 2.3.2
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Modal -->
+    <div id="calendarModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Calendar</div>
+                <button id="closeCalendar" class="close-modal">Done</button>
+            </div>
+            <div class="settings-list" style="padding-top: 20px;">
+                <div class="calendar-container">
+                    <div id="calendarHeader" class="calendar-header"></div>
+                    <div id="calendarGrid" class="calendar-grid"></div>
+                    <div id="dayDetails" class="day-details">
+                        <div id="dayDetailsTitle" class="day-details-title">Selected Day</div>
+                        <div id="dayTasksList" style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Tasks will be injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        function handleCredentialResponse(response) {
+            if (window.app) {
+                window.app.handleGoogleSignIn(response);
+            }
+        }
+    </script>
+</body>
+
+</html>
