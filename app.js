@@ -1,4 +1,35 @@
 class VoiceTaskApp {
+    // Fast minimal AI classifier - runs instantly
+    classifyTask(text) {
+        const t = text.toLowerCase();
+        
+        // Priority detection
+        let priority = 'medium';
+        const urgentWords = ['urgent', 'asap', 'emergency', 'immediately', 'now', 'today', 'critical', 'important', 'deadline'];
+        const lowPriorityWords = ['sometime', 'whenever', 'later', 'eventually', 'someday', 'optional', 'maybe'];
+        
+        if (urgentWords.some(w => t.includes(w))) priority = 'high';
+        else if (lowPriorityWords.some(w => t.includes(w))) priority = 'low';
+        
+        // Category detection
+        let category = 'personal';
+        const categories = {
+            work: ['meeting', 'call', 'email', 'project', 'deadline', 'report', 'client', 'presentation', 'zoom', 'teams', 'conference', 'board', 'boss', 'colleague', 'office', 'job', 'task for work', 'workout', 'huddle', 'standup', 'sync', 'proposal', 'invoice', 'budget', 'review'],
+            health: ['exercise', 'gym', 'run', 'workout', 'doctor', 'medicine', 'pill', 'appointment', 'health', 'yoga', 'walk', 'jog', 'stretch', 'therapy', 'checkup', 'dentist', 'meds', 'sleep', 'rest'],
+            shopping: ['grocery', 'shop', 'buy', 'store', 'amazon', 'order', 'pick up', 'supermarket', 'food', 'milk', 'bread', 'eggs', 'vegetables', 'fruit', 'meat', 'snacks', 'drinks', 'water', 'coffee'],
+            urgent: ['urgent', 'asap', 'emergency', 'critical', 'immediately', 'now']
+        };
+        
+        for (const [cat, words] of Object.entries(categories)) {
+            if (words.some(w => t.includes(w))) {
+                category = cat;
+                break;
+            }
+        }
+        
+        return { category, priority };
+    }
+
     constructor() {
         this.tasks = this.loadTasks();
         this.history = this.loadHistory();
@@ -384,10 +415,15 @@ class VoiceTaskApp {
     }
 
     addTask(text, type = 'task') {
+        // AI classification
+        const { category, priority } = this.classifyTask(text);
+        
         const task = {
             id: Date.now(),
             text: text,
             type: type,
+            category: category,
+            priority: priority,
             completed: false,
             createdAt: new Date().toISOString()
         };
@@ -682,6 +718,24 @@ class VoiceTaskApp {
         const div = document.createElement('div');
         const isEditing = this.editingTaskId === task.id;
         const type = task.type || 'task';
+        
+        // AI Labels
+        const category = task.category || 'personal';
+        const priority = task.priority || 'medium';
+        
+        const priorityColors = {
+            high: '#ef4444',
+            medium: '#f59e0b',
+            low: '#22c55e'
+        };
+        
+        const categoryLabels = {
+            work: '💼',
+            health: '🏃',
+            shopping: '🛒',
+            urgent: '⚡',
+            personal: '📌'
+        };
 
         let icon = '';
         if (type === 'notification') {
@@ -702,6 +756,10 @@ class VoiceTaskApp {
                     aria-label="Mark task as ${task.completed ? 'active' : 'completed'}"
                 />
                 <div class="task-main">
+                    <div class="task-labels" style="display: flex; gap: 6px; align-items: center; margin-bottom: 4px;">
+                        <span class="ai-label" style="font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.05em;">${categoryLabels[category] || '📌'}</span>
+                        <span class="priority-dot" style="width: 6px; height: 6px; border-radius: 50%; background: ${priorityColors[priority] || priorityColors.medium};"></span>
+                    </div>
                     <div class="type-badge">
                         ${icon}
                     </div>
