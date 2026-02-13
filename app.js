@@ -249,19 +249,25 @@ class VoiceTaskApp {
 
                 this.analyser.getByteFrequencyData(dataArray);
 
-                const baseHeights = [6, 10, 16, 10, 6];
+                const baseHeights = [8, 12, 18, 12, 8];
                 for (let i = 0; i < this.bars.length; i++) {
                     const bar = this.bars[i];
-                    const sampleIndex = Math.floor((i / this.bars.length) * bufferLength);
-                    const value = dataArray[sampleIndex];
+                    
+                    // Get average intensity from frequency data for more responsive animation
+                    const startBin = Math.floor((i / this.bars.length) * bufferLength);
+                    const endBin = Math.floor(((i + 1) / this.bars.length) * bufferLength);
+                    let sum = 0;
+                    for (let j = startBin; j < endBin && j < bufferLength; j++) {
+                        sum += dataArray[j];
+                    }
+                    const avg = sum / (endBin - startBin || 1);
+                    const intensity = avg / 255;
 
-                    // All bars active subtly
-                    const intensity = (value / 255);
-                    const height = baseHeights[i] + (intensity * 12);
+                    const height = baseHeights[i] + (intensity * 16);
                     bar.style.height = `${height}px`;
 
                     bar.style.background = '#000000';
-                    bar.style.opacity = intensity > 0.1 ? 0.6 + (intensity * 0.4) : 0.6;
+                    bar.style.opacity = 0.6 + (intensity * 0.4);
                 }
             };
             draw();
