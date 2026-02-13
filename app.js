@@ -765,12 +765,12 @@ class VoiceTaskApp {
         const monthName = selectedDate.toLocaleString('default', { month: 'long' });
         this.calendarHeader.innerHTML = `
             <span>${monthName} ${year}</span>
-            <div style="display: flex; gap: 10px;">
-                <button id="prevMonth" style="background:none; border:none; color:white; cursor:pointer; padding:5px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <div style="display: flex; gap: 6px;">
+                <button id="prevMonth" style="background:none; border:none; color:rgba(255,255,255,0.5); cursor:pointer; padding:8px; border-radius:10px; transition:all 0.2s;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
-                <button id="nextMonth" style="background:none; border:none; color:white; cursor:pointer; padding:5px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <button id="nextMonth" style="background:none; border:none; color:rgba(255,255,255,0.5); cursor:pointer; padding:8px; border-radius:10px; transition:all 0.2s;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
             </div>
         `;
@@ -783,6 +783,19 @@ class VoiceTaskApp {
             e.stopPropagation();
             this.renderCalendar(new Date(year, month + 1, 1));
         };
+        
+        // Add hover effects to nav buttons
+        ['prevMonth', 'nextMonth'].forEach(id => {
+            const btn = document.getElementById(id);
+            btn.addEventListener('mouseenter', () => {
+                btn.style.background = 'rgba(255,255,255,0.1)';
+                btn.style.color = '#ffffff';
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.background = 'none';
+                btn.style.color = 'rgba(255,255,255,0.5)';
+            });
+        });
 
         // Header weekdays
         ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => {
