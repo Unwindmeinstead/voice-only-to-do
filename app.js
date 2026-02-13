@@ -181,7 +181,6 @@ class VoiceTaskApp {
         this.recognition.onstart = () => {
             this.isRecording = true;
             this.updateRecordingUI(true);
-            this.playPing && this.playPing();
         };
 
         this.recognition.onresult = (event) => {
@@ -199,6 +198,10 @@ class VoiceTaskApp {
         };
 
         this.recognition.onerror = (event) => {
+            if (event.error === 'no-speech') {
+                this.stopRecording();
+                return;
+            }
             console.error('Speech recognition error:', event.error);
             this.showToast(`Error: ${event.error}`);
             this.stopRecording();
@@ -252,13 +255,13 @@ class VoiceTaskApp {
                     const sampleIndex = Math.floor((i / this.bars.length) * bufferLength);
                     const value = dataArray[sampleIndex];
 
-                    // Subtle animation: base height + small dynamic boost
-                    const height = baseHeights[i] + (value / 255) * 14;
+                    // All bars active subtly
+                    const intensity = (value / 255);
+                    const height = baseHeights[i] + (intensity * 12);
                     bar.style.height = `${height}px`;
 
-                    // Keep it clean: black bars only
                     bar.style.background = '#000000';
-                    bar.style.opacity = value > 50 ? '1' : '0.6';
+                    bar.style.opacity = intensity > 0.1 ? 0.6 + (intensity * 0.4) : 0.6;
                 }
             };
             draw();
@@ -270,7 +273,6 @@ class VoiceTaskApp {
     stopRecording(immediate = false) {
         this.isRecording = false;
         this.updateRecordingUI(false);
-        this.playPop && this.playPop();
 
         if (this.visualizerId) {
             cancelAnimationFrame(this.visualizerId);
