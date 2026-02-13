@@ -249,23 +249,18 @@ class VoiceTaskApp {
 
                 this.analyser.getByteFrequencyData(dataArray);
 
+                // Average all frequency data for unified animation
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const intensity = sum / (bufferLength * 255);
+
                 const baseHeights = [8, 12, 18, 12, 8];
                 for (let i = 0; i < this.bars.length; i++) {
                     const bar = this.bars[i];
-                    
-                    // Get average intensity from frequency data for more responsive animation
-                    const startBin = Math.floor((i / this.bars.length) * bufferLength);
-                    const endBin = Math.floor(((i + 1) / this.bars.length) * bufferLength);
-                    let sum = 0;
-                    for (let j = startBin; j < endBin && j < bufferLength; j++) {
-                        sum += dataArray[j];
-                    }
-                    const avg = sum / (endBin - startBin || 1);
-                    const intensity = avg / 255;
-
                     const height = baseHeights[i] + (intensity * 16);
                     bar.style.height = `${height}px`;
-
                     bar.style.background = '#000000';
                     bar.style.opacity = 0.6 + (intensity * 0.4);
                 }
