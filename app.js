@@ -262,7 +262,7 @@ class VoiceTaskApp {
                     const height = baseHeights[i] + (intensity * 16);
                     bar.style.height = `${height}px`;
                     bar.style.background = '#000000';
-                    bar.style.opacity = 0.6 + (intensity * 0.4);
+                    bar.style.opacity = 0.85 + (intensity * 0.15);
                 }
             };
             draw();
