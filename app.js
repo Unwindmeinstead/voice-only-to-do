@@ -44,6 +44,9 @@ class VoiceTaskApp {
         this.initializeAudioContext();
         this.renderTasks();
         this.initializePWA();
+        
+        // Auto-start listening when app opens
+        this.startRecording();
 
         // Expose instance for global callbacks (like Google Auth)
         window.app = this;
@@ -205,9 +208,11 @@ class VoiceTaskApp {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         this.recognition = new SpeechRecognition();
 
-        this.recognition.continuous = false;
+        // Always listening mode - continuous
+        this.recognition.continuous = true;
         this.recognition.interimResults = true;
         this.recognition.lang = 'en-US';
+        this.isRecording = true; // Start in listening mode
 
         this.recognition.onstart = () => {
             this.isRecording = true;
@@ -239,7 +244,12 @@ class VoiceTaskApp {
         };
 
         this.recognition.onend = () => {
-            this.stopRecording();
+            // Auto-restart for always listening mode
+            if (this.isRecording && this.recognition) {
+                try { this.recognition.start(); } catch(e) {}
+            } else {
+                this.stopRecording();
+            }
         };
     }
 
