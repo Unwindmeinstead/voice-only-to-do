@@ -287,11 +287,11 @@ class VoiceTaskApp {
 
         // Reset bars to default state
         if (this.bars) {
-            const defaults = [6, 10, 16, 10, 6];
+            const defaults = [8, 12, 18, 12, 8];
             this.bars.forEach((bar, i) => {
                 bar.style.height = `${defaults[i]}px`;
                 bar.style.background = '';
-                bar.style.opacity = '';
+                bar.style.opacity = '0.85';
             });
         }
 
@@ -401,10 +401,19 @@ class VoiceTaskApp {
 
     triggerSuccessAnimation() {
         if (!this.micButton) return;
+        // Quick flash to indicate success, then immediately back to ready state
         this.micButton.classList.add('success');
         setTimeout(() => {
             this.micButton.classList.remove('success');
-        }, 1500);
+            // Immediately reset bars to ready state
+            if (this.bars) {
+                const defaults = [8, 12, 18, 12, 8];
+                this.bars.forEach((bar, i) => {
+                    bar.style.height = `${defaults[i]}px`;
+                    bar.style.opacity = '0.85';
+                });
+            }
+        }, 300);
     }
 
     editTask(id) {
