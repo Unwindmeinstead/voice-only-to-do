@@ -729,12 +729,12 @@ class VoiceTaskApp {
             low: '#22c55e'
         };
         
-        const categoryLabels = {
-            work: '💼',
-            health: '🏃',
-            shopping: '🛒',
-            urgent: '⚡',
-            personal: '📌'
+        const categoryIcons = {
+            work: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>',
+            health: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>',
+            shopping: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
+            urgent: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+            personal: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
         };
 
         let icon = '';
@@ -757,7 +757,7 @@ class VoiceTaskApp {
                 />
                 <div class="task-main">
                     <div class="task-labels" style="display: flex; gap: 6px; align-items: center; margin-bottom: 4px;">
-                        <span class="ai-label" style="font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.05em;">${categoryLabels[category] || '📌'}</span>
+                        <span class="ai-label">${categoryIcons[category] || categoryIcons.personal}</span>
                         <span class="priority-dot" style="width: 6px; height: 6px; border-radius: 50%; background: ${priorityColors[priority] || priorityColors.medium};"></span>
                     </div>
                     <div class="type-badge">
