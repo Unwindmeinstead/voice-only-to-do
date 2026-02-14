@@ -840,21 +840,6 @@ Rules:
         const parsedDate = this.parseDateFromText(text);
 
         if (finalContent.length > 0) {
-            // If date found, strip date/time words from content to keep it clean
-            if (parsedDate) {
-                finalContent = finalContent
-                    .replace(/\b(tomorrow|today)\b/gi, '')
-                    .replace(/\b(next|on)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '')
-                    .replace(/\b(at|around|by)\s+\d{1,2}(:\d{2})?\s*(am|pm)?\b/gi, '')
-                    .replace(/\b(in|on)\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*\d{0,2}(st|nd|rd|th)?\b/gi, '')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-
-                // If content became empty (e.g. "Tomorrow at 10"), default to generic title if type is event
-                if (!finalContent && type === 'event') finalContent = "Meeting";
-                if (!finalContent) finalContent = "Task";
-            }
-
             this.addTask(finalContent, type, parsedDate);
         }
     }
@@ -1448,10 +1433,32 @@ Rules:
                 dayTasksList.innerHTML = tasksOnDay.length > 0
                     ? tasksOnDay.map(t => {
                         const color = t.type === 'event' ? '#0a84ff' : (t.type === 'notification' ? '#fbbf24' : '#4ade80');
+
+                        // Extract time
+                        const dateObj = new Date(t.createdAt);
+                        const timeStr = dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+                        // Summary: strip date/time words ONLY for display
+                        let summary = t.text
+                            .replace(/\b(tomorrow|today)\b/gi, '')
+                            .replace(/\b(next|on)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '')
+                            .replace(/\b(at|around|by)\s+\d{1,2}(:\d{2})?\s*(am|pm)?\b/gi, '')
+                            .replace(/\b(in|on)\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*\d{0,2}(st|nd|rd|th)?\b/gi, '')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+
+                        if (!summary) summary = t.type === 'event' ? 'Meeting' : 'Task';
+
                         return `
-                            <div class="day-task-item">
-                                <div class="day-task-bullet" style="background: ${color}"></div>
-                                <div class="day-task-text">${this.escapeHtml(t.text)}</div>
+                            <div class="day-task-item" onclick="this.classList.toggle('expanded')">
+                                <div style="display:flex; align-items:center; gap:12px; width:100%;">
+                                    <div class="day-task-bullet" style="background: ${color}"></div>
+                                    <div class="day-task-text">
+                                        <span style="font-weight: 600; color: #0a84ff; font-size: 13px;">${timeStr}</span> 
+                                        <span style="margin-left: 4px;">${this.escapeHtml(summary)}</span>
+                                    </div>
+                                </div>
+                                <div class="day-task-full">${this.escapeHtml(t.text)}</div>
                             </div>
                         `;
                     }).join('')
