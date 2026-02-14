@@ -55,52 +55,40 @@ class VoiceTaskApp {
         return { category, priority };
     }
 
-    // Groq AI - Enhanced task understanding
+    // Groq AI - Only trigger with "hey done" keyword
     async processWithAI(text) {
-        const aiQueryPatterns = [
-            /^(what('s| is)|summarize|how many|suggest|help me|tell me)/i,
-            /what do i have/i,
-            /what('s|s| is) on my/i,
-            /show me (my )?(tasks|todos|calendar|schedule|list)/i,
-            /what('s| is) (urgent|important|pending|next|coming)/i,
-            /list.*tasks/i,
-            /hey ai/i,
-            /ask ai/i,
-            /my (tasks|calendar|schedule|plate|agenda|to do|todo)/i,
-            /anything (urgent|important|pending|due)/i,
-            /do i have/i,
-            /prioritize|priorities/i,
-            /^(how|can you|could you|please)/i
-        ];
-
-        const isAIQuery = aiQueryPatterns.some(pattern => pattern.test(text));
-
-        if (isAIQuery) {
-            // Show loading state in AI panel
-            this.showAIPanel(true);
-
-            const response = await this.callGroqAI(text);
-            if (response) {
-                this.showAIPanel(false, response);
-                this.speakText(response);
-                return true;
-            } else {
-                this.dismissAIPanel();
-                this.showToast('AI could not respond');
-                return true;
+        // Only process if user says "hey done" at the start
+        const heyDoneMatch = text.match(/^hey\s+done[,.]?\s*(.*)/i);
+        if (!heyDoneMatch) {
+            // Also check for task breakdown (doesn't need keyword)
+            if (/break down|divide|split/i.test(text)) {
+                const taskMatch = text.replace(/break down|divide|split/i, '').trim();
+                if (taskMatch.length > 5) {
+                    await this.breakdownTask(taskMatch);
+                    return true;
+                }
             }
+            return false;
         }
 
-        // Check for task breakdown
-        if (/break down|divide|split/i.test(text)) {
-            const taskMatch = text.replace(/break down|divide|split/i, '').trim();
-            if (taskMatch.length > 5) {
-                await this.breakdownTask(taskMatch);
-                return true;
-            }
+        const query = heyDoneMatch[1].trim();
+        if (!query) {
+            this.showToast('Say "Hey Done" followed by your question');
+            return true;
         }
 
-        return false;
+        // Show loading state in AI panel
+        this.showAIPanel(true);
+
+        const response = await this.callGroqAI(query);
+        if (response) {
+            this.showAIPanel(false, response);
+            this.speakText(response);
+        } else {
+            this.dismissAIPanel();
+            this.showToast('AI could not respond');
+        }
+        return true;
     }
 
     showAIPanel(loading = false, content = '') {
@@ -367,12 +355,8 @@ Rules:
             this.toggleSettings(false);
         });
 
-        // AI Panel dismiss
-        const aiDismissBtn = document.getElementById('aiDismissBtn');
+        // AI Panel dismiss - only overlay tap is needed now as button is hidden
         const aiPanelOverlay = document.getElementById('aiPanelOverlay');
-        if (aiDismissBtn) {
-            aiDismissBtn.addEventListener('click', () => this.dismissAIPanel());
-        }
         if (aiPanelOverlay) {
             aiPanelOverlay.addEventListener('click', (e) => {
                 if (e.target === aiPanelOverlay) this.dismissAIPanel();
@@ -803,12 +787,60 @@ Rules:
             finalContent = text.replace('note', '').trim();
         }
 
+        // Parse date from text
+        const parsedDate = this.parseDateFromText(text);
+
         if (finalContent.length > 0) {
-            this.addTask(finalContent, type);
+            this.addTask(finalContent, type, parsedDate);
         }
     }
 
-    addTask(text, type = 'task') {
+    parseDateFromText(text) {
+        const now = new Date();
+        const lower = text.toLowerCase();
+        let targetDate = null;
+
+        // 1. Relative days
+        if (lower.includes('tomorrow')) {
+            targetDate = new Date(now);
+            targetDate.setDate(now.getDate() + 1);
+        } else if (lower.includes('today')) {
+            targetDate = new Date(now);
+        }
+
+        // 2. Days of week (e.g., "on Friday", "next Monday")
+        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        for (let i = 0; i < days.length; i++) {
+            if (lower.includes(days[i])) {
+                targetDate = new Date(now);
+                const currentDay = now.getDay();
+                const distance = (i + 7 - currentDay) % 7;
+                // If today is Monday and user says "Monday", assume next week if explicitly "next Monday", otherwise today/next week logic 
+                // Simple logic: if distance is 0 (today), assume next week if "next" is present
+                let addDays = distance;
+                if (distance === 0 && lower.includes('next')) addDays = 7;
+                else if (distance === 0) addDays = 0; // "on Monday" when it is Monday -> today
+                else if (lower.includes('next ' + days[i])) addDays += 7;
+
+                targetDate.setDate(now.getDate() + addDays);
+                break;
+            }
+        }
+
+        // 3. Absolute dates (e.g., "March 5th", "Jan 12")
+        const monthMatch = lower.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(st|nd|rd|th)?/);
+        if (monthMatch) {
+            const months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+            const monthIndex = months[monthMatch[1].substring(0, 3)];
+            const day = parseInt(monthMatch[2]);
+            targetDate = new Date(now.getFullYear(), monthIndex, day);
+            if (targetDate < now) targetDate.setFullYear(now.getFullYear() + 1); // Next year if passed
+        }
+
+        return targetDate ? targetDate.toISOString() : null;
+    }
+
+    addTask(text, type = 'task', specificDate = null) {
         // AI classification
         const { category, priority } = this.classifyTask(text);
 
@@ -819,7 +851,7 @@ Rules:
             category: category,
             priority: priority,
             completed: false,
-            createdAt: new Date().toISOString()
+            createdAt: specificDate || new Date().toISOString() // Use parsed date if available
         };
 
         this.tasks.unshift(task);

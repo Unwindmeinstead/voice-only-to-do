@@ -630,21 +630,19 @@
         }
 
         .ai-panel {
-            background: rgba(18, 18, 20, 0.98);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #000000;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 32px;
             width: 92%;
             max-width: 400px;
-            max-height: 70vh;
+            max-height: 60vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            transform: scale(0.85) translateY(20px);
+            transform: scale(0.9) translateY(20px);
             opacity: 0;
-            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-            box-shadow:
-                0 0 0 1px rgba(255, 255, 255, 0.06),
-                0 20px 60px rgba(0, 0, 0, 0.7);
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
         }
 
         .ai-panel-overlay.show .ai-panel {
@@ -653,20 +651,19 @@
         }
 
         .ai-panel-header {
-            padding: 20px 24px 12px;
+            padding: 24px 24px 10px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            justify-content: center;
+            gap: 8px;
         }
 
         .ai-panel-dot {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             background: #0a84ff;
-            box-shadow: 0 0 12px rgba(10, 132, 255, 0.6);
-            animation: aiPulse 2s ease-in-out infinite;
+            box-shadow: 0 0 10px #0a84ff;
         }
 
         @keyframes aiPulse {
@@ -684,16 +681,16 @@
         .ai-panel-title {
             font-size: 13px;
             font-weight: 600;
-            letter-spacing: 0.06em;
-            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.05em;
+            color: rgba(255, 255, 255, 0.4);
             text-transform: uppercase;
         }
 
         .ai-panel-body {
-            padding: 16px 24px 24px;
+            padding: 10px 24px 30px;
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
             flex: 1;
+            text-align: left;
         }
 
         .ai-panel-body::-webkit-scrollbar {
@@ -706,10 +703,11 @@
         }
 
         .ai-panel-text {
-            font-size: 16px;
-            line-height: 1.6;
-            color: rgba(255, 255, 255, 0.9);
-            font-weight: 400;
+            font-size: 20px;
+            line-height: 1.4;
+            color: #ffffff;
+            font-weight: 500;
+            letter-spacing: -0.01em;
         }
 
         .ai-panel-list {
@@ -718,53 +716,18 @@
             margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
         }
 
         .ai-panel-list li {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 12px 14px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            font-size: 15px;
+            font-size: 20px;
             line-height: 1.4;
-            color: rgba(255, 255, 255, 0.85);
-            animation: aiListItem 0.3s ease-out both;
-        }
-
-        .ai-panel-list li:nth-child(1) {
-            animation-delay: 0.05s;
-        }
-
-        .ai-panel-list li:nth-child(2) {
-            animation-delay: 0.1s;
-        }
-
-        .ai-panel-list li:nth-child(3) {
-            animation-delay: 0.15s;
-        }
-
-        .ai-panel-list li:nth-child(4) {
-            animation-delay: 0.2s;
-        }
-
-        .ai-panel-list li:nth-child(5) {
-            animation-delay: 0.25s;
-        }
-
-        .ai-panel-list li:nth-child(6) {
-            animation-delay: 0.3s;
-        }
-
-        .ai-panel-list li:nth-child(7) {
-            animation-delay: 0.35s;
-        }
-
-        .ai-panel-list li:nth-child(8) {
-            animation-delay: 0.4s;
+            color: #ffffff;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
         }
 
         @keyframes aiListItem {
@@ -784,14 +747,14 @@
             height: 6px;
             border-radius: 50%;
             background: #0a84ff;
-            margin-top: 7px;
+            margin-top: 11px;
             flex-shrink: 0;
+            opacity: 0.8;
         }
 
         .ai-panel-footer {
-            padding: 12px 24px 20px;
-            display: flex;
-            justify-content: center;
+            display: none;
+            /* Cleaner, minimalistic - tap background to dismiss */
         }
 
         .ai-dismiss-btn {
