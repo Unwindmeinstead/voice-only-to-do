@@ -58,22 +58,35 @@ class VoiceTaskApp {
     // Groq AI - Enhanced task understanding
     async processWithAI(text) {
         const aiQueryPatterns = [
-            /^(what('s| is)|summarize|how many|suggest|help me)/i,
+            /^(what('s| is)|summarize|how many|suggest|help me|tell me)/i,
             /what do i have/i,
-            /show me (my )?(tasks|todos)/i,
-            /what('s| is) (urgent|important|pending)/i,
+            /what('s|s| is) on my/i,
+            /show me (my )?(tasks|todos|calendar|schedule|list)/i,
+            /what('s| is) (urgent|important|pending|next|coming)/i,
             /list.*tasks/i,
             /hey ai/i,
-            /ask ai/i
+            /ask ai/i,
+            /my (tasks|calendar|schedule|plate|agenda|to do|todo)/i,
+            /anything (urgent|important|pending|due)/i,
+            /do i have/i,
+            /prioritize|priorities/i,
+            /^(how|can you|could you|please)/i
         ];
 
         const isAIQuery = aiQueryPatterns.some(pattern => pattern.test(text));
 
         if (isAIQuery) {
+            // Show loading state in AI panel
+            this.showAIPanel(true);
+
             const response = await this.callGroqAI(text);
             if (response) {
-                this.showToast(response, 5000);
+                this.showAIPanel(false, response);
                 this.speakText(response);
+                return true;
+            } else {
+                this.dismissAIPanel();
+                this.showToast('AI could not respond');
                 return true;
             }
         }
@@ -90,17 +103,87 @@ class VoiceTaskApp {
         return false;
     }
 
+    showAIPanel(loading = false, content = '') {
+        const overlay = document.getElementById('aiPanelOverlay');
+        const body = document.getElementById('aiPanelBody');
+        if (!overlay || !body) return;
+
+        if (loading) {
+            body.innerHTML = `
+                <div class="ai-loading">
+                    <div class="ai-loading-line"></div>
+                    <div class="ai-loading-line"></div>
+                    <div class="ai-loading-line"></div>
+                </div>
+            `;
+        } else {
+            body.innerHTML = this.formatAIResponse(content);
+        }
+
+        overlay.classList.add('show');
+    }
+
+    dismissAIPanel() {
+        const overlay = document.getElementById('aiPanelOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
+
+    formatAIResponse(text) {
+        // Split by newlines or numbered/bulleted items
+        const lines = text.split(/\n/).map(l => l.trim()).filter(l => l.length > 0);
+
+        // Detect if response is a list (has bullets, numbers, or dashes)
+        const isList = lines.length > 1 && lines.some(l => /^(\d+[.)]|[-•*])/.test(l));
+
+        if (isList) {
+            const items = lines.map(line => {
+                // Clean up list markers
+                const clean = line.replace(/^(\d+[.)]|[-•*])\s*/, '').trim();
+                if (!clean) return '';
+                return `<li><div class="ai-list-bullet"></div><span>${this.escapeHtml(clean)}</span></li>`;
+            }).filter(l => l).join('');
+            return `<ul class="ai-panel-list">${items}</ul>`;
+        }
+
+        // If multiple lines but not a list, render as paragraphs
+        if (lines.length > 1) {
+            return lines.map(line => `<p class="ai-panel-text" style="margin-bottom: 8px;">${this.escapeHtml(line)}</p>`).join('');
+        }
+
+        // Single line
+        return `<p class="ai-panel-text">${this.escapeHtml(text)}</p>`;
+    }
+
     async callGroqAI(userMessage) {
         if (!this.GROQ_API_KEY) {
+            this.dismissAIPanel();
             this.showToast('Add Groq API key in settings to enable AI');
             return null;
         }
 
         try {
-            const taskList = this.tasks.filter(t => !t.completed).slice(0, 10).map(t => `- ${t.text} (${t.category || 'personal'})`).join('\n');
+            const taskList = this.tasks.filter(t => !t.completed).slice(0, 20).map(t => {
+                const cat = t.category || 'personal';
+                const pri = t.priority || 'medium';
+                const type = t.type || 'task';
+                return `- [${type}] ${t.text} (${cat}, ${pri} priority)`;
+            }).join('\n');
             const completedCount = this.tasks.filter(t => t.completed).length;
+            const totalCount = this.tasks.length;
 
-            const systemPrompt = `You are a helpful task assistant for a voice-first todo app. Current pending tasks:\n${taskList || 'No tasks'}\n\nCompleted: ${completedCount} tasks. Be concise and helpful.`;
+            const systemPrompt = `You are a concise, helpful AI assistant for a voice-first todo app called "Done".
+
+Current pending tasks (${totalCount - completedCount} active, ${completedCount} completed):
+${taskList || 'No tasks yet.'}
+
+Rules:
+- Be concise but thorough
+- When listing tasks, use a numbered or bulleted list format
+- When summarizing, highlight priorities and categories
+- Keep responses under 200 words
+- Use plain text, no markdown formatting symbols
+- If the user asks about their calendar or schedule, list relevant events/tasks by date
+- Be warm and encouraging`;
 
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
@@ -114,7 +197,7 @@ class VoiceTaskApp {
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userMessage }
                     ],
-                    max_tokens: 150,
+                    max_tokens: 300,
                     temperature: 0.7
                 })
             });
@@ -283,6 +366,18 @@ class VoiceTaskApp {
             this.saveSettings();
             this.toggleSettings(false);
         });
+
+        // AI Panel dismiss
+        const aiDismissBtn = document.getElementById('aiDismissBtn');
+        const aiPanelOverlay = document.getElementById('aiPanelOverlay');
+        if (aiDismissBtn) {
+            aiDismissBtn.addEventListener('click', () => this.dismissAIPanel());
+        }
+        if (aiPanelOverlay) {
+            aiPanelOverlay.addEventListener('click', (e) => {
+                if (e.target === aiPanelOverlay) this.dismissAIPanel();
+            });
+        }
 
         // Test AI button
         const testAiBtn = document.getElementById('testAiBtn');
@@ -656,7 +751,7 @@ class VoiceTaskApp {
         }
     }
 
-    processVoiceCommand(transcript) {
+    async processVoiceCommand(transcript) {
         const text = transcript.toLowerCase().trim();
 
         // Resume Audio Context (iOS Policy)
@@ -678,8 +773,9 @@ class VoiceTaskApp {
             return;
         }
 
-        // Check for AI queries
-        this.processWithAI(text);
+        // Check for AI queries — if AI handles it, don't add as task
+        const handledByAI = await this.processWithAI(text);
+        if (handledByAI) return;
 
         // Type Intelligence (Task / Notification / Event)
         let type = 'task';

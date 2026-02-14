@@ -609,6 +609,249 @@
             width: 160px;
         }
 
+        /* AI Response Panel — Dynamic Island Expansion */
+        .ai-panel-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0);
+            z-index: 4000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            transition: background 0.4s ease;
+        }
+
+        .ai-panel-overlay.show {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            pointer-events: auto;
+        }
+
+        .ai-panel {
+            background: rgba(18, 18, 20, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 32px;
+            width: 92%;
+            max-width: 400px;
+            max-height: 70vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transform: scale(0.85) translateY(20px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.06),
+                0 20px 60px rgba(0, 0, 0, 0.7);
+        }
+
+        .ai-panel-overlay.show .ai-panel {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+
+        .ai-panel-header {
+            padding: 20px 24px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .ai-panel-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #0a84ff;
+            box-shadow: 0 0 12px rgba(10, 132, 255, 0.6);
+            animation: aiPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes aiPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 8px rgba(10, 132, 255, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 16px rgba(10, 132, 255, 0.8);
+            }
+        }
+
+        .ai-panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+        }
+
+        .ai-panel-body {
+            padding: 16px 24px 24px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            flex: 1;
+        }
+
+        .ai-panel-body::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .ai-panel-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .ai-panel-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 400;
+        }
+
+        .ai-panel-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ai-panel-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 15px;
+            line-height: 1.4;
+            color: rgba(255, 255, 255, 0.85);
+            animation: aiListItem 0.3s ease-out both;
+        }
+
+        .ai-panel-list li:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+
+        .ai-panel-list li:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .ai-panel-list li:nth-child(3) {
+            animation-delay: 0.15s;
+        }
+
+        .ai-panel-list li:nth-child(4) {
+            animation-delay: 0.2s;
+        }
+
+        .ai-panel-list li:nth-child(5) {
+            animation-delay: 0.25s;
+        }
+
+        .ai-panel-list li:nth-child(6) {
+            animation-delay: 0.3s;
+        }
+
+        .ai-panel-list li:nth-child(7) {
+            animation-delay: 0.35s;
+        }
+
+        .ai-panel-list li:nth-child(8) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes aiListItem {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .ai-list-bullet {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #0a84ff;
+            margin-top: 7px;
+            flex-shrink: 0;
+        }
+
+        .ai-panel-footer {
+            padding: 12px 24px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .ai-dismiss-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 999px;
+            padding: 10px 32px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .ai-dismiss-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* AI Loading Shimmer */
+        .ai-loading {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 4px 0;
+        }
+
+        .ai-loading-line {
+            height: 14px;
+            border-radius: 8px;
+            background: linear-gradient(90deg,
+                    rgba(255, 255, 255, 0.04) 25%,
+                    rgba(255, 255, 255, 0.08) 50%,
+                    rgba(255, 255, 255, 0.04) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        .ai-loading-line:nth-child(1) {
+            width: 90%;
+        }
+
+        .ai-loading-line:nth-child(2) {
+            width: 75%;
+        }
+
+        .ai-loading-line:nth-child(3) {
+            width: 60%;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
         /* Settings Modal */
         /* iOS 17 Premium Modal System */
         .modal-overlay {
@@ -1116,6 +1359,22 @@
             <div id="aiIndicator" class="ai-indicator"
                 style="opacity: 0; transition: opacity 0.3s; width: 0; margin: 0;"></div>
             <span id="toastMessage"></span>
+        </div>
+    </div>
+
+    <!-- AI Response Panel -->
+    <div id="aiPanelOverlay" class="ai-panel-overlay">
+        <div class="ai-panel">
+            <div class="ai-panel-header">
+                <div class="ai-panel-dot"></div>
+                <div class="ai-panel-title">AI Assistant</div>
+            </div>
+            <div class="ai-panel-body" id="aiPanelBody">
+                <!-- Content injected by JS -->
+            </div>
+            <div class="ai-panel-footer">
+                <button id="aiDismissBtn" class="ai-dismiss-btn">Dismiss</button>
+            </div>
         </div>
     </div>
 
