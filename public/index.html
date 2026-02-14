@@ -306,7 +306,7 @@
             transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             position: fixed;
             left: 50%;
-            bottom: calc(5px + env(safe-area-inset-bottom));
+            bottom: calc(0px + env(safe-area-inset-bottom));
             transform: translateX(-50%);
             z-index: 3000;
             overflow: hidden;
@@ -1306,6 +1306,11 @@
 
             body {
                 padding: 24px;
+            }
+
+            .mic-button {
+                bottom: 50px;
+                /* Higher on desktop/laptop */
             }
         }
     </style>
