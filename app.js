@@ -3,23 +3,23 @@ class VoiceTaskApp {
     get settings() {
         return JSON.parse(localStorage.getItem('doneSettings') || '{}');
     }
-    
+
     get GROQ_API_KEY() {
         return this.settings.groqApiKey || '';
     }
-    
+
     get GROQ_MODEL() {
         return 'llama-3.1-8b-instant';
     }
-    
+
     get aiTtsEnabled() {
         return this.settings.aiTtsEnabled !== false;
     }
-    
+
     get soundsEnabled() {
         return this.settings.soundsEnabled !== false;
     }
-    
+
     get animationsEnabled() {
         return this.settings.animationsEnabled !== false;
     }
@@ -27,15 +27,15 @@ class VoiceTaskApp {
     // Fast minimal AI classifier - runs instantly
     classifyTask(text) {
         const t = text.toLowerCase();
-        
+
         // Priority detection
         let priority = 'medium';
         const urgentWords = ['urgent', 'asap', 'emergency', 'immediately', 'now', 'today', 'critical', 'important', 'deadline'];
         const lowPriorityWords = ['sometime', 'whenever', 'later', 'eventually', 'someday', 'optional', 'maybe'];
-        
+
         if (urgentWords.some(w => t.includes(w))) priority = 'high';
         else if (lowPriorityWords.some(w => t.includes(w))) priority = 'low';
-        
+
         // Category detection
         let category = 'personal';
         const categories = {
@@ -44,14 +44,14 @@ class VoiceTaskApp {
             shopping: ['grocery', 'shop', 'buy', 'store', 'amazon', 'order', 'pick up', 'supermarket', 'food', 'milk', 'bread', 'eggs', 'vegetables', 'fruit', 'meat', 'snacks', 'drinks', 'water', 'coffee'],
             urgent: ['urgent', 'asap', 'emergency', 'critical', 'immediately', 'now']
         };
-        
+
         for (const [cat, words] of Object.entries(categories)) {
             if (words.some(w => t.includes(w))) {
                 category = cat;
                 break;
             }
         }
-        
+
         return { category, priority };
     }
 
@@ -66,9 +66,9 @@ class VoiceTaskApp {
             /hey ai/i,
             /ask ai/i
         ];
-        
+
         const isAIQuery = aiQueryPatterns.some(pattern => pattern.test(text));
-        
+
         if (isAIQuery) {
             const response = await this.callGroqAI(text);
             if (response) {
@@ -77,7 +77,7 @@ class VoiceTaskApp {
                 return true;
             }
         }
-        
+
         // Check for task breakdown
         if (/break down|divide|split/i.test(text)) {
             const taskMatch = text.replace(/break down|divide|split/i, '').trim();
@@ -86,7 +86,7 @@ class VoiceTaskApp {
                 return true;
             }
         }
-        
+
         return false;
     }
 
@@ -95,13 +95,13 @@ class VoiceTaskApp {
             this.showToast('Add Groq API key in settings to enable AI');
             return null;
         }
-        
+
         try {
             const taskList = this.tasks.filter(t => !t.completed).slice(0, 10).map(t => `- ${t.text} (${t.category || 'personal'})`).join('\n');
             const completedCount = this.tasks.filter(t => t.completed).length;
-            
+
             const systemPrompt = `You are a helpful task assistant for a voice-first todo app. Current pending tasks:\n${taskList || 'No tasks'}\n\nCompleted: ${completedCount} tasks. Be concise and helpful.`;
-            
+
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -118,9 +118,9 @@ class VoiceTaskApp {
                     temperature: 0.7
                 })
             });
-            
+
             if (!response.ok) throw new Error('API Error');
-            
+
             const data = await response.json();
             return data.choices?.[0]?.message?.content || null;
         } catch (error) {
@@ -134,7 +134,7 @@ class VoiceTaskApp {
             this.showToast('Add Groq API key in settings to enable AI');
             return;
         }
-        
+
         try {
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
@@ -152,14 +152,14 @@ class VoiceTaskApp {
                     temperature: 0.5
                 })
             });
-            
+
             if (!response.ok) throw new Error('API Error');
-            
+
             const data = await response.json();
             const content = data.choices?.[0]?.message?.content;
-            
+
             const subtasks = JSON.parse(content.replace(/```json|```/g, ''));
-            
+
             if (Array.isArray(subtasks)) {
                 subtasks.slice(0, 5).forEach(subtask => {
                     if (subtask && subtask.length > 2) {
@@ -291,13 +291,7 @@ class VoiceTaskApp {
             });
         }
 
-        // Settings interactivity
-        document.querySelectorAll('.settings-toggle').forEach(toggle => {
-            toggle.addEventListener('click', () => {
-                toggle.classList.toggle('active');
-                this.playPing && this.playPing();
-            });
-        });
+
 
         // Close modal on click outside
         this.settingsModal.addEventListener('click', (e) => {
@@ -528,7 +522,7 @@ class VoiceTaskApp {
         // Visualizer is optional - SpeechRecognition handles mic permission
         // Skip getUserMedia to avoid duplicate permission popup
         return;
-        
+
         // Original visualizer code (kept for reference)
         try {
             if (!this.audioContext) await this.initializeAudioContext();
@@ -692,7 +686,7 @@ class VoiceTaskApp {
     addTask(text, type = 'task') {
         // AI classification
         const { category, priority } = this.classifyTask(text);
-        
+
         const task = {
             id: Date.now(),
             text: text,
@@ -817,7 +811,7 @@ class VoiceTaskApp {
         const url = this.syncUrlInput.value.trim();
         const syncEnabled = document.getElementById('toggle-sync').classList.contains('active');
         const groqKey = document.getElementById('groqApiKey')?.value.trim() || '';
-        
+
         // New toggles
         const aiTtsEnabled = document.getElementById('toggle-ai-tts')?.classList.contains('active') ?? true;
         const soundsEnabled = document.getElementById('toggle-sounds')?.classList.contains('active') ?? true;
@@ -857,34 +851,34 @@ class VoiceTaskApp {
         if (saved) {
             const settings = JSON.parse(saved);
             this.syncUrlInput.value = settings.syncUrl || '';
-            
+
             // Sync toggle
             const toggleSync = document.getElementById('toggle-sync');
             if (settings.syncEnabled) {
                 toggleSync.classList.add('active');
             }
-            
+
             // AI TTS toggle
             const toggleAiTts = document.getElementById('toggle-ai-tts');
             if (settings.aiTtsEnabled !== false) {
                 toggleAiTts.classList.add('active');
             }
-            
+
             // Sounds toggle
             const toggleSounds = document.getElementById('toggle-sounds');
             if (settings.soundsEnabled !== false) {
                 toggleSounds.classList.add('active');
             }
-            
+
             // Animations toggle
             const toggleAnimations = document.getElementById('toggle-animations');
             if (settings.animationsEnabled !== false) {
                 toggleAnimations.classList.add('active');
             }
-            
+
             this.user = settings.user || null;
             if (this.user) this.updateUserUI();
-            
+
             // Load Groq API key
             const groqInput = document.getElementById('groqApiKey');
             if (groqInput && settings.groqApiKey) {
@@ -1030,17 +1024,17 @@ class VoiceTaskApp {
         const div = document.createElement('div');
         const isEditing = this.editingTaskId === task.id;
         const type = task.type || 'task';
-        
+
         // AI Labels
         const category = task.category || 'personal';
         const priority = task.priority || 'medium';
-        
+
         const priorityColors = {
             high: '#ef4444',
             medium: '#f59e0b',
             low: '#22c55e'
         };
-        
+
         const categoryIcons = {
             work: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>',
             health: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>',
@@ -1153,7 +1147,7 @@ class VoiceTaskApp {
             e.stopPropagation();
             this.renderCalendar(new Date(year, month + 1, 1));
         };
-        
+
         // Add hover effects to nav buttons
         ['prevMonth', 'nextMonth'].forEach(id => {
             const btn = document.getElementById(id);
