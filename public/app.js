@@ -169,15 +169,27 @@ class VoiceTaskApp {
                     html += '<ul class="ai-panel-list">';
                     listStarted = true;
                 }
-                const clean = line.replace(/^(\d+[.)]|[-•*])\s*/, '').trim();
+                // Clean up list markers and potentially [type] markers
+                let clean = line.replace(/^(\d+[.)]|[-•*])\s*/, '').replace(/^\[[^\]]+\]\s*/, '').trim();
                 if (!clean) return;
 
-                const isCompleted = this.tasks.some(t => t.completed && (t.text.includes(clean) || clean.includes(t.text)));
+                const matchingTask = this.tasks.find(t => t.text.toLowerCase().includes(clean.toLowerCase()) || clean.toLowerCase().includes(t.text.toLowerCase()));
+                const type = matchingTask ? matchingTask.type : 'task';
+                const isCompleted = matchingTask ? matchingTask.completed : false;
+
                 const checkedClass = isCompleted ? 'checked' : '';
                 const completedClass = isCompleted ? 'completed' : '';
 
+                // Minimal SVG mapping
+                const iconMap = {
+                    notification: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>',
+                    event: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>',
+                    task: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+                };
+
                 html += `<li class="${completedClass}">
                     <div class="ai-list-checkbox ${checkedClass}" data-task-text="${this.escapeHtml(clean)}"></div>
+                    <div class="ai-list-type-icon ${type}">${iconMap[type] || iconMap.task}</div>
                     <span>${this.escapeHtml(clean)}</span>
                 </li>`;
             } else {
@@ -221,10 +233,10 @@ Current pending tasks (${totalCount - completedCount} active, ${completedCount} 
 ${taskList || 'No tasks yet.'}
 
 Format Rules:
-1. Start with a short, punchy headline (e.g., "On your plate today", "Quick update")
+1. Start with a short, punchy headline
 2. Follow with a list of tasks using "-" bullets
-3. End with a very brief, encouraging takeaway
-4. Ensure tasks match the list exactly
+3. DO NOT include type markers (like [event]) in the final response
+4. End with a very brief, encouraging takeaway
 5. Keep it under 150 words
 6. Use clear, simple language`;
 

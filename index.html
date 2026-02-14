@@ -745,6 +745,33 @@
             transition: opacity 0.2s ease;
         }
 
+        .ai-list-type-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.4);
+            flex-shrink: 0;
+        }
+
+        .ai-list-type-icon.event {
+            color: #f472b6;
+            background: rgba(244, 114, 182, 0.1);
+        }
+
+        .ai-list-type-icon.notification {
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        .ai-list-type-icon.task {
+            color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+
         .ai-panel-list li.completed span {
             text-decoration: line-through;
             opacity: 0.5;
