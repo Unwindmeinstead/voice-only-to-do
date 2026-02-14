@@ -118,6 +118,15 @@ class VoiceTaskApp {
             `;
         } else {
             body.innerHTML = this.formatAIResponse(content);
+
+            // Attach event listeners to new checkboxes
+            const checkboxes = body.querySelectorAll('.ai-list-checkbox');
+            checkboxes.forEach(cb => {
+                cb.closest('li').addEventListener('click', (e) => {
+                    const text = cb.dataset.taskText;
+                    this.toggleAITaskCompletion(text, cb);
+                });
+            });
         }
 
         overlay.classList.add('show');
@@ -126,6 +135,25 @@ class VoiceTaskApp {
     dismissAIPanel() {
         const overlay = document.getElementById('aiPanelOverlay');
         if (overlay) overlay.classList.remove('show');
+    }
+
+    toggleAITaskCompletion(text, checkboxEl) {
+        // Find task by fuzzy text match
+        const task = this.tasks.find(t => t.text.toLowerCase().includes(text.toLowerCase()) || text.toLowerCase().includes(t.text.toLowerCase()));
+
+        if (task) {
+            this.toggleTask(task.id);
+            const isCompleted = !task.completed; // toggleTask will flip it, so untoggled state matches UI update
+
+            const li = checkboxEl.closest('li');
+            if (task.completed) {
+                checkboxEl.classList.add('checked');
+                li.classList.add('completed');
+            } else {
+                checkboxEl.classList.remove('checked');
+                li.classList.remove('completed');
+            }
+        }
     }
 
     formatAIResponse(text) {
@@ -140,7 +168,16 @@ class VoiceTaskApp {
                 // Clean up list markers
                 const clean = line.replace(/^(\d+[.)]|[-•*])\s*/, '').trim();
                 if (!clean) return '';
-                return `<li><div class="ai-list-bullet"></div><span>${this.escapeHtml(clean)}</span></li>`;
+
+                // Check if this matches an existing completed task
+                const isCompleted = this.tasks.some(t => t.completed && (t.text.includes(clean) || clean.includes(t.text)));
+                const checkedClass = isCompleted ? 'checked' : '';
+                const completedClass = isCompleted ? 'completed' : '';
+
+                return `<li class="${completedClass}">
+                    <div class="ai-list-checkbox ${checkedClass}" data-task-text="${this.escapeHtml(clean)}"></div>
+                    <span>${this.escapeHtml(clean)}</span>
+                </li>`;
             }).filter(l => l).join('');
             return `<ul class="ai-panel-list">${items}</ul>`;
         }
@@ -171,18 +208,15 @@ class VoiceTaskApp {
             const completedCount = this.tasks.filter(t => t.completed).length;
             const totalCount = this.tasks.length;
 
-            const systemPrompt = `You are a concise, helpful AI assistant for a voice-first todo app called "Done".
-
+            const systemPrompt = `You are a concise, helpful AI assistant for "Done".
 Current pending tasks (${totalCount - completedCount} active, ${completedCount} completed):
 ${taskList || 'No tasks yet.'}
 
 Rules:
-- Be concise but thorough
-- When listing tasks, use a numbered or bulleted list format
-- When summarizing, highlight priorities and categories
+- Start with a clear header like "Here is what's on your plate..."
+- List tasks exactly as they appear in the provided list
+- Use a bulleted list format for tasks
 - Keep responses under 200 words
-- Use plain text, no markdown formatting symbols
-- If the user asks about their calendar or schedule, list relevant events/tasks by date
 - Be warm and encouraging`;
 
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
