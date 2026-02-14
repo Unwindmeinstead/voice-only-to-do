@@ -175,12 +175,41 @@ class VoiceTaskApp {
 
     showToast(message, duration = 3000) {
         if (!this.toastMessage || !this.toast) return;
+
+        // Reset state
+        this.toast.classList.remove('expanded');
+        this.toast.classList.remove('loading');
+        const aiIndicator = document.getElementById('aiIndicator');
+        if (aiIndicator) {
+            aiIndicator.style.opacity = '0';
+            aiIndicator.style.width = '0';
+            aiIndicator.style.marginRight = '0';
+        }
+
+        const isLong = message.length > 40;
+
+        if (isLong) {
+            this.toast.classList.add('expanded');
+            if (aiIndicator) {
+                aiIndicator.style.opacity = '1';
+                aiIndicator.style.width = '6px';
+                aiIndicator.style.marginRight = '8px';
+            }
+        }
+
         this.toastMessage.textContent = message;
         this.toast.classList.add('show');
 
-        setTimeout(() => {
+        // Clear existing timeout
+        if (this.toastTimeout) clearTimeout(this.toastTimeout);
+
+        this.toastTimeout = setTimeout(() => {
             this.toast.classList.remove('show');
-        }, duration);
+            // Wait for transition to finish before removing expanded class
+            setTimeout(() => {
+                this.toast.classList.remove('expanded');
+            }, 500);
+        }, isLong ? Math.max(duration, 6000) : duration);
     }
 
     speakText(text) {
