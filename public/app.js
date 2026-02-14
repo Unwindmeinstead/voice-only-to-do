@@ -823,9 +823,8 @@ Rules:
             finalContent = text.replace('remind me', '').replace('notification', '').replace('alert', '').replace('remember', '').trim();
         } else if (/^(event|calendar|meeting|appointment|schedule)/i.test(text) || text.includes('meeting')) {
             type = 'event';
-            finalContent = text.replace(/^(add|create|schedule|book)\s+(a|an)\s+/, '')
-                .replace(/^(event|calendar|meeting|appointment)/, '')
-                .replace(' for ', ' ')
+            finalContent = text.replace(/^(add|create|schedule|book|new|make)\s+(a|an)?\s*/i, '')
+                .replace(/\s+for\s+/i, ' ')
                 .trim();
         } else if (hasDateKeyword || hasTimePattern || hasNumericalDate) {
             // Assume event if date/time is specific
@@ -841,6 +840,21 @@ Rules:
         const parsedDate = this.parseDateFromText(text);
 
         if (finalContent.length > 0) {
+            // If date found, strip date/time words from content to keep it clean
+            if (parsedDate) {
+                finalContent = finalContent
+                    .replace(/\b(tomorrow|today)\b/gi, '')
+                    .replace(/\b(next|on)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, '')
+                    .replace(/\b(at|around|by)\s+\d{1,2}(:\d{2})?\s*(am|pm)?\b/gi, '')
+                    .replace(/\b(in|on)\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*\d{0,2}(st|nd|rd|th)?\b/gi, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                // If content became empty (e.g. "Tomorrow at 10"), default to generic title if type is event
+                if (!finalContent && type === 'event') finalContent = "Meeting";
+                if (!finalContent) finalContent = "Task";
+            }
+
             this.addTask(finalContent, type, parsedDate);
         }
     }
