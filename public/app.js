@@ -55,40 +55,52 @@ class VoiceTaskApp {
         return { category, priority };
     }
 
-    // Groq AI - Only trigger with "hey done" keyword
+    // Groq AI - Smart detection (no keyword required)
     async processWithAI(text) {
-        // Only process if user says "hey done" at the start
-        const heyDoneMatch = text.match(/^hey\s+done[,.]?\s*(.*)/i);
-        if (!heyDoneMatch) {
-            // Also check for task breakdown (doesn't need keyword)
-            if (/break down|divide|split/i.test(text)) {
-                const taskMatch = text.replace(/break down|divide|split/i, '').trim();
-                if (taskMatch.length > 5) {
-                    await this.breakdownTask(taskMatch);
-                    return true;
-                }
-            }
-            return false;
-        }
+        const aiQueryPatterns = [
+            /^(what('s| is)|summarize|how many|suggest|help me|tell me)/i,
+            /what do i have/i,
+            /what('s|s| is) on my/i,
+            /show me (my )?(tasks|todos|calendar|schedule|list)/i,
+            /what('s| is) (urgent|important|pending|next|coming)/i,
+            /list.*tasks/i,
+            /hey ai/i,
+            /ask ai/i,
+            /my (tasks|calendar|schedule|plate|agenda|to do|todo)/i,
+            /anything (urgent|important|pending|due)/i,
+            /do i have/i,
+            /prioritize|priorities/i,
+            /^(how|can you|could you|please)/i
+        ];
 
-        const query = heyDoneMatch[1].trim();
-        if (!query) {
-            this.showToast('Say "Hey Done" followed by your question');
+        // Exclude specific creating commands to avoid false positives
+        if (/^(add|create|remind|new|schedule|book)/i.test(text)) return false;
+
+        const isAIQuery = aiQueryPatterns.some(pattern => pattern.test(text));
+
+        if (isAIQuery) {
+            this.showAIPanel(true);
+            const response = await this.callGroqAI(text);
+            if (response) {
+                this.showAIPanel(false, response);
+                this.speakText(response);
+            } else {
+                this.dismissAIPanel();
+                this.showToast('AI could not respond');
+            }
             return true;
         }
 
-        // Show loading state in AI panel
-        this.showAIPanel(true);
-
-        const response = await this.callGroqAI(query);
-        if (response) {
-            this.showAIPanel(false, response);
-            this.speakText(response);
-        } else {
-            this.dismissAIPanel();
-            this.showToast('AI could not respond');
+        // Check for task breakdown
+        if (/break down|divide|split/i.test(text)) {
+            const taskMatch = text.replace(/break down|divide|split/i, '').trim();
+            if (taskMatch.length > 5) {
+                await this.breakdownTask(taskMatch);
+                return true;
+            }
         }
-        return true;
+
+        return false;
     }
 
     showAIPanel(loading = false, content = '') {
@@ -775,10 +787,14 @@ Rules:
         if (text.startsWith('remind me') || text.startsWith('notification') || text.startsWith('alert') || text.startsWith('remember')) {
             type = 'notification';
             finalContent = text.replace('remind me', '').replace('notification', '').replace('alert', '').replace('remember', '').trim();
-        } else if (text.startsWith('event') || text.startsWith('calendar')) {
+        } else if (/^(event|calendar|meeting|appointment|schedule)/i.test(text) || text.includes('meeting')) {
             type = 'event';
-            finalContent = text.replace('event', '').replace('calendar', '').trim();
+            finalContent = text.replace(/^(add|create|schedule|book)\s+(a|an)\s+/, '')
+                .replace(/^(event|calendar|meeting|appointment)/, '')
+                .replace(' for ', ' ')
+                .trim();
         } else if (hasDateKeyword || hasTimePattern || hasNumericalDate) {
+            // Assume event if date/time is specific
             type = 'event';
         }
 
@@ -808,18 +824,17 @@ Rules:
             targetDate = new Date(now);
         }
 
-        // 2. Days of week (e.g., "on Friday", "next Monday")
+        // 2. Days of week
         const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         for (let i = 0; i < days.length; i++) {
             if (lower.includes(days[i])) {
                 targetDate = new Date(now);
                 const currentDay = now.getDay();
                 const distance = (i + 7 - currentDay) % 7;
-                // If today is Monday and user says "Monday", assume next week if explicitly "next Monday", otherwise today/next week logic 
-                // Simple logic: if distance is 0 (today), assume next week if "next" is present
+
                 let addDays = distance;
                 if (distance === 0 && lower.includes('next')) addDays = 7;
-                else if (distance === 0) addDays = 0; // "on Monday" when it is Monday -> today
+                else if (distance === 0) addDays = 0;
                 else if (lower.includes('next ' + days[i])) addDays += 7;
 
                 targetDate.setDate(now.getDate() + addDays);
@@ -827,14 +842,36 @@ Rules:
             }
         }
 
-        // 3. Absolute dates (e.g., "March 5th", "Jan 12")
+        // 3. Absolute dates
         const monthMatch = lower.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(st|nd|rd|th)?/);
         if (monthMatch) {
             const months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
             const monthIndex = months[monthMatch[1].substring(0, 3)];
             const day = parseInt(monthMatch[2]);
-            targetDate = new Date(now.getFullYear(), monthIndex, day);
-            if (targetDate < now) targetDate.setFullYear(now.getFullYear() + 1); // Next year if passed
+            const year = now.getFullYear();
+
+            targetDate = new Date(year, monthIndex, day);
+            if (targetDate < new Date(now.getTime() - 86400000)) { // If passed by more than a day
+                targetDate.setFullYear(year + 1);
+            }
+        }
+
+        // 4. Time parsing
+        if (targetDate) {
+            targetDate.setHours(9, 0, 0, 0); // Default to 9 AM
+
+            // Match "at 10:30 am", "at 10 am", "at 10", "10:30pm", etc.
+            const timeMatch = lower.match(/at\s+(\d{1,2})(:(\d{2}))?\s*(am|pm)?/);
+            if (timeMatch) {
+                let hours = parseInt(timeMatch[1]);
+                const minutes = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
+                const meridian = timeMatch[4];
+
+                if (meridian === 'pm' && hours < 12) hours += 12;
+                if (meridian === 'am' && hours === 12) hours = 0;
+
+                targetDate.setHours(hours, minutes, 0, 0);
+            }
         }
 
         return targetDate ? targetDate.toISOString() : null;
