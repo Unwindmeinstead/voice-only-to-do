@@ -706,12 +706,21 @@
             border-radius: 10px;
         }
 
-        .ai-panel-text {
-            font-size: 20px;
-            line-height: 1.4;
+        .ai-response-header {
+            font-size: 26px;
+            font-weight: 600;
             color: #ffffff;
-            font-weight: 500;
-            letter-spacing: -0.01em;
+            margin-bottom: 20px;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        .ai-panel-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 24px;
+            letter-spacing: 0.01em;
         }
 
         .ai-panel-list {
@@ -720,30 +729,25 @@
             margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
         }
 
         .ai-panel-list li {
-            font-size: 20px;
+            font-size: 18px;
             line-height: 1.4;
-            color: #ffffff;
+            color: rgba(255, 255, 255, 0.95);
             font-weight: 500;
-            letter-spacing: -0.01em;
             display: flex;
-            gap: 12px;
-            align-items: flex-start;
+            gap: 14px;
+            align-items: center;
+            padding: 8px 0;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
         }
 
-        @keyframes aiListItem {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .ai-panel-list li.completed span {
+            text-decoration: line-through;
+            opacity: 0.5;
         }
 
         .ai-list-checkbox {
@@ -772,15 +776,6 @@
             border: solid white;
             border-width: 0 2px 2px 0;
             transform: translate(-50%, -60%) rotate(45deg);
-        }
-
-        .ai-panel-list li.completed span {
-            text-decoration: line-through;
-            opacity: 0.5;
-        }
-
-        .ai-panel-list li {
-            cursor: pointer;
         }
 
         .ai-panel-footer {

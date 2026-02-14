@@ -157,38 +157,46 @@ class VoiceTaskApp {
     }
 
     formatAIResponse(text) {
-        // Split by newlines or numbered/bulleted items
         const lines = text.split(/\n/).map(l => l.trim()).filter(l => l.length > 0);
+        let html = '';
+        let listStarted = false;
 
-        // Detect if response is a list (has bullets, numbers, or dashes)
-        const isList = lines.length > 1 && lines.some(l => /^(\d+[.)]|[-•*])/.test(l));
+        lines.forEach((line, index) => {
+            const isListItem = /^(\d+[.)]|[-•*])/.test(line);
 
-        if (isList) {
-            const items = lines.map(line => {
-                // Clean up list markers
+            if (isListItem) {
+                if (!listStarted) {
+                    html += '<ul class="ai-panel-list">';
+                    listStarted = true;
+                }
                 const clean = line.replace(/^(\d+[.)]|[-•*])\s*/, '').trim();
-                if (!clean) return '';
+                if (!clean) return;
 
-                // Check if this matches an existing completed task
                 const isCompleted = this.tasks.some(t => t.completed && (t.text.includes(clean) || clean.includes(t.text)));
                 const checkedClass = isCompleted ? 'checked' : '';
                 const completedClass = isCompleted ? 'completed' : '';
 
-                return `<li class="${completedClass}">
+                html += `<li class="${completedClass}">
                     <div class="ai-list-checkbox ${checkedClass}" data-task-text="${this.escapeHtml(clean)}"></div>
                     <span>${this.escapeHtml(clean)}</span>
                 </li>`;
-            }).filter(l => l).join('');
-            return `<ul class="ai-panel-list">${items}</ul>`;
-        }
+            } else {
+                if (listStarted) {
+                    html += '</ul>';
+                    listStarted = false;
+                }
 
-        // If multiple lines but not a list, render as paragraphs
-        if (lines.length > 1) {
-            return lines.map(line => `<p class="ai-panel-text" style="margin-bottom: 8px;">${this.escapeHtml(line)}</p>`).join('');
-        }
+                // First non-list line is the header
+                if (index === 0) {
+                    html += `<p class="ai-response-header">${this.escapeHtml(line)}</p>`;
+                } else {
+                    html += `<p class="ai-panel-text">${this.escapeHtml(line)}</p>`;
+                }
+            }
+        });
 
-        // Single line
-        return `<p class="ai-panel-text">${this.escapeHtml(text)}</p>`;
+        if (listStarted) html += '</ul>';
+        return html || text;
     }
 
     async callGroqAI(userMessage) {
@@ -208,16 +216,17 @@ class VoiceTaskApp {
             const completedCount = this.tasks.filter(t => t.completed).length;
             const totalCount = this.tasks.length;
 
-            const systemPrompt = `You are a concise, helpful AI assistant for "Done".
+            const systemPrompt = `You are a concise, ultra-minimal AI assistant for "Done".
 Current pending tasks (${totalCount - completedCount} active, ${completedCount} completed):
 ${taskList || 'No tasks yet.'}
 
-Rules:
-- Start with a clear header like "Here is what's on your plate..."
-- List tasks exactly as they appear in the provided list
-- Use a bulleted list format for tasks
-- Keep responses under 200 words
-- Be warm and encouraging`;
+Format Rules:
+1. Start with a short, punchy headline (e.g., "On your plate today", "Quick update")
+2. Follow with a list of tasks using "-" bullets
+3. End with a very brief, encouraging takeaway
+4. Ensure tasks match the list exactly
+5. Keep it under 150 words
+6. Use clear, simple language`;
 
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
