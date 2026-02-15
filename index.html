@@ -1566,6 +1566,63 @@
             -webkit-backdrop-filter: blur(10px);
         }
 
+        /* Note Styles */
+        .note-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .note-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .note-content {
+            font-size: 15px;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+        }
+
+        .note-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 10px;
+        }
+
+        .note-date {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .delete-note-btn {
+            background: rgba(255, 59, 48, 0.1);
+            border: none;
+            border-radius: 6px;
+            padding: 4px;
+            cursor: pointer;
+            color: #ff3b30;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .delete-note-btn:hover {
+            opacity: 1;
+        }
+
         .summary-value {
             font-size: 32px;
             font-weight: 700;
@@ -1624,7 +1681,19 @@
                 </div>
             </div>
 
-            <div class="top-center"></div>
+            <div class="top-center">
+                <div id="openNotes" style="cursor: pointer; opacity: 0.6; transition: opacity 0.2s;"
+                    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <line x1="10" y1="9" x2="8" y2="9"></line>
+                    </svg>
+                </div>
+            </div>
 
             <div class="top-right" id="openSettings" style="cursor: pointer; text-align: right;">
                 <div class="task-count" id="taskCount">0</div>
@@ -1818,7 +1887,7 @@
                                     </svg>
                                     Smart Calorie Tracking
                                 </div>
-                                <div class="command-desc" style="margin-bottom: 10px;">No need to say "calories"! Just
+                                <div class="command-desc" style="margin-bottom: 10px;">No need for "calories"! Just
                                     say what you ate.</div>
                                 <div class="ai-command-example">
                                     <div class="command-row">
@@ -1826,6 +1895,73 @@
                                     </div>
                                     <div class="command-row">
                                         <div class="command-text">"Ate a salad 450 calories"</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Navigation -->
+                            <div class="ai-guide-section">
+                                <div class="ai-guide-title">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                                    </svg>
+                                    Navigation & Access
+                                </div>
+                                <div class="ai-command-example">
+                                    <div class="command-row">
+                                        <div class="command-text">"Go to my calendar"</div>
+                                    </div>
+                                    <div class="command-row">
+                                        <div class="command-text">"Take me to settings"</div>
+                                    </div>
+                                    <div class="command-row">
+                                        <div class="command-text">"Open notes"</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Analysis -->
+                            <div class="ai-guide-section">
+                                <div class="ai-guide-title">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5">
+                                        <path
+                                            d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-13,8.38 8.38 0 0 1 3.8.9" />
+                                        <polyline points="22 3 12 13 9 10" />
+                                    </svg>
+                                    Daily Intelligence
+                                </div>
+                                <div class="ai-command-example">
+                                    <div class="command-row">
+                                        <div class="command-text">"Summarize my day"</div>
+                                    </div>
+                                    <div class="command-row">
+                                        <div class="command-text">"What's next for me?"</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Query & Recall -->
+                            <div class="ai-guide-section">
+                                <div class="ai-guide-title">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5">
+                                        <circle cx="11" cy="11" r="8" />
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                    </svg>
+                                    Query & Recall
+                                </div>
+                                <div class="ai-command-example">
+                                    <div class="command-row">
+                                        <div class="command-text">"Do I have any meetings tomorrow?"</div>
+                                    </div>
+                                    <div class="command-row">
+                                        <div class="command-text">"How many calories did I eat today?"</div>
+                                    </div>
+                                    <div class="command-row">
+                                        <div class="command-text">"What was that gate code I saved?"</div>
                                     </div>
                                 </div>
                             </div>
@@ -1925,6 +2061,21 @@
                 </div>
                 <div id="calorieList">
                     <!-- Calories injected by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes Modal -->
+    <div id="notesModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Knowledge Base</div>
+                <button id="closeNotes" class="close-modal">Done</button>
+            </div>
+            <div class="settings-list" style="padding: 20px;">
+                <div id="notesList" class="notes-list">
+                    <!-- Notes injected by JS -->
                 </div>
             </div>
         </div>

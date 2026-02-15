@@ -97,6 +97,13 @@ class VoiceTaskApp {
                 return true;
             }
 
+            if (/(open|go to|take me to|view|access|show).*(notes|knowledge|research|stashed)/i.test(text)) {
+                this.renderNotes();
+                this.notesModal.classList.add('show');
+                this.showAIActivity(1500);
+                return true;
+            }
+
             this.showAIPanel(true);
             const response = await this.callGroqAI(text);
             if (response) {
@@ -381,6 +388,7 @@ Format Rules:
 
         this.user = this.loadUser();
         this.meals = this.loadMeals();
+        this.notes = this.loadNotes();
         this.initializeElements();
         this.initializeSpeechRecognition();
         this.initializeAudioContext();
@@ -432,6 +440,25 @@ Format Rules:
         this.closeCalorieTracker = document.getElementById('closeCalorieTracker');
         this.calorieList = document.getElementById('calorieList');
         this.totalCaloriesEl = document.getElementById('totalCalories');
+
+        // Notes elements
+        this.notesModal = document.getElementById('notesModal');
+        this.closeNotes = document.getElementById('closeNotes');
+        this.notesList = document.getElementById('notesList');
+        this.openNotesBtn = document.getElementById('openNotes');
+
+        if (this.closeNotes) {
+            this.closeNotes.addEventListener('click', () => {
+                this.notesModal.classList.remove('show');
+            });
+        }
+
+        if (this.openNotesBtn) {
+            this.openNotesBtn.addEventListener('click', () => {
+                this.renderNotes();
+                this.notesModal.classList.add('show');
+            });
+        }
 
         if (this.closeCalorieTracker) {
             this.closeCalorieTracker.addEventListener('click', () => {
@@ -856,7 +883,7 @@ Format Rules:
                         - REMINDER: Setting a notification or alert for a specific time/relative time.
                         - EVENT: Scheduling an appointment, meeting, or time-locked activity.
                         - AI: Asking a question, navigating, or requesting a summary. 
-                          Includes "take me to", "go to", "open", "show", "view", "access" for Calendar, Tracker, or Settings.
+                          Includes "take me to", "go to", "open", "show", "view", "access" for Calendar, Tracker, Settings, or Notes.
                         - TASK: To-do items, actions, or work (DEFAULT).
 
                         Return JSON: {
@@ -866,7 +893,7 @@ Format Rules:
                             "calories": 0 (only if explicitly mentioned for MEAL),
                             "mealType": "breakfast|lunch|dinner|snack (only for MEAL)",
                             "cleanText": "cleaned up content for the item",
-                            "navigation": "CALENDAR|TRACKER|SETTINGS|null"
+                            "navigation": "CALENDAR|TRACKER|SETTINGS|NOTES|null"
                         }`
                         },
                         { role: 'user', content: text }
@@ -1047,6 +1074,12 @@ Format Rules:
                 }
                 if (navigation === 'SETTINGS') {
                     this.toggleSettings(true);
+                    return;
+                }
+                if (navigation === 'NOTES') {
+                    this.renderNotes();
+                    this.notesModal.classList.add('show');
+                    this.showAIActivity(1500);
                     return;
                 }
             }
@@ -1827,6 +1860,55 @@ Format Rules:
     loadMeals() {
         const saved = localStorage.getItem('doneMeals');
         return saved ? JSON.parse(saved) : [];
+    }
+
+    loadNotes() {
+        const saved = localStorage.getItem('doneNotes');
+        return saved ? JSON.parse(saved) : [];
+    }
+
+    addNote(text) {
+        const note = {
+            id: Date.now(),
+            content: text,
+            timestamp: new Date().toISOString()
+        };
+        this.notes.unshift(note);
+        localStorage.setItem('doneNotes', JSON.stringify(this.notes));
+
+        // Also add to main task list for visibility
+        this.addTask(text, 'note');
+
+        this.triggerSuccessAnimation();
+        this.showToast('Note stashed');
+        this.renderNotes();
+    }
+
+    deleteNote(id) {
+        this.notes = this.notes.filter(n => n.id !== id);
+        localStorage.setItem('doneNotes', JSON.stringify(this.notes));
+        this.renderNotes();
+    }
+
+    renderNotes() {
+        if (!this.notesList) return;
+
+        if (this.notes.length === 0) {
+            this.notesList.innerHTML = '<div style="opacity: 0.3; font-style: italic; padding: 20px; text-align: center;">No notes saved yet.</div>';
+            return;
+        }
+
+        this.notesList.innerHTML = this.notes.map(n => `
+            <div class="note-card">
+                <div class="note-content">${this.escapeHtml(n.content)}</div>
+                <div class="note-footer">
+                    <div class="note-date">${new Date(n.timestamp).toLocaleDateString()} ${new Date(n.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                    <button class="delete-note-btn" onclick="app.deleteNote(${n.id})">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
     }
 
     renderMealTracker() {
