@@ -677,12 +677,14 @@ Format Rules:
     }
 
     detectLiveIntent(text) {
-        if (!text || text.length < 2) {
+        if (!this.intentIndicator || !this.intentText) return;
+
+        if (!text || text.trim().length === 0) {
             this.intentIndicator.classList.remove('show');
             return;
         }
 
-        const t = text.toLowerCase();
+        const t = text.toLowerCase().trim();
         let intent = 'task';
         let label = 'NEW TASK';
 
@@ -701,7 +703,7 @@ Format Rules:
         if (aiQueryPatterns.some(p => p.test(t))) {
             intent = 'ai';
             label = 'ASKING AI';
-        } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem')) {
+        } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem') || t.startsWith('note')) {
             intent = 'notification';
             label = 'REMINDER';
         } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
@@ -709,7 +711,7 @@ Format Rules:
             label = 'EVENT';
         } else {
             // Check for date keywords for events
-            const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'pm', 'am'];
+            const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'pm', 'am', 'next'];
             if (dateKeywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(t))) {
                 intent = 'event';
                 label = 'EVENT';
