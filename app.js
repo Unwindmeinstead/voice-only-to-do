@@ -85,14 +85,14 @@ class VoiceTaskApp {
             if (/open (meal|food|calorie) tracker|show (me )?(my )?(meals|food|calories|calorie tracker)/i.test(text)) {
                 this.renderMealTracker();
                 this.calorieTrackerModal.classList.add('show');
-                this.showToast('Opening Calorie Tracker');
+                this.showAIActivity(1500);
                 return true;
             }
 
             if (/open (my )?calendar|show (my )?calendar|calendar/i.test(text)) {
                 this.renderCalendar();
                 this.calendarModal.classList.add('show');
-                this.showToast('Opening Calendar');
+                this.showAIActivity(1500);
                 return true;
             }
 
@@ -420,9 +420,11 @@ Format Rules:
         this.calendarGrid = document.getElementById('calendarGrid');
         this.calendarHeader = document.getElementById('calendarHeader');
 
-        // Intent elements
+        // Intent and Activity elements
         this.intentIndicator = document.getElementById('intentIndicator');
         this.intentText = document.getElementById('intentText');
+        this.aiActivityRing = document.getElementById('aiActivityRing');
+        this.aiActivityTimer = null;
 
         // Calorie Tracker elements
         this.calorieTrackerModal = document.getElementById('calorieTrackerModal');
@@ -500,7 +502,7 @@ Format Rules:
                     });
                     if (response.ok) {
                         const data = await response.json();
-                        this.showToast('AI Works!');
+                        this.showAIActivity(1000);
                     } else {
                         this.showToast('Error: ' + response.status);
                     }
@@ -989,7 +991,7 @@ Format Rules:
     toggleSettings(show) {
         if (show) {
             this.settingsModal.classList.add('show');
-            this.showToast('Settings opened');
+            this.showAIActivity(1000);
         } else {
             this.settingsModal.classList.remove('show');
         }
@@ -1020,7 +1022,7 @@ Format Rules:
         }
 
         // 2. High-Fidelity Background AI Refinement
-        this.showToast('Analyzing intent...', 1000);
+        this.showAIActivity(1500);
         const refined = await this.confirmIntentWithAI(transcript);
 
         if (refined) {
@@ -1031,13 +1033,13 @@ Format Rules:
                 if (navigation === 'CALENDAR') {
                     this.renderCalendar();
                     this.calendarModal.classList.add('show');
-                    this.showToast('Opening Calendar');
+                    this.showAIActivity(1500);
                     return;
                 }
                 if (navigation === 'TRACKER') {
                     this.renderMealTracker();
                     this.calorieTrackerModal.classList.add('show');
-                    this.showToast('Opening Calorie Tracker');
+                    this.showAIActivity(1500);
                     return;
                 }
                 if (navigation === 'SETTINGS') {
@@ -1220,6 +1222,15 @@ Format Rules:
         setTimeout(() => {
             this.toast.classList.remove('show');
         }, 3000);
+    }
+
+    showAIActivity(duration = 2000) {
+        if (!this.aiActivityRing) return;
+        this.aiActivityRing.classList.add('show');
+        clearTimeout(this.aiActivityTimer);
+        this.aiActivityTimer = setTimeout(() => {
+            this.aiActivityRing.classList.remove('show');
+        }, duration);
     }
 
     saveTasks() {
