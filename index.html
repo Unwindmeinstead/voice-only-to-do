@@ -1345,19 +1345,33 @@
             background: rgba(74, 222, 128, 0.1);
         }
 
-        .type-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 6px;
-            font-size: 8px;
-            font-weight: 800;
-            letter-spacing: 0.1em;
-            color: rgba(255, 255, 255, 0.4);
-            margin-bottom: 6px;
+        .ai-label svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .type-badge svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .section-label {
+            margin: 24px 16px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            color: rgba(255, 255, 255, 0.3);
             text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .task-card.note .type-badge {
@@ -1397,10 +1411,7 @@
             display: block;
         }
 
-        .task-card.task .type-badge {
-            color: #4ade80;
-            background: rgba(74, 222, 128, 0.1);
-        }
+
 
         /* Meal Tracker Styles */
         .meal-card {

@@ -1326,12 +1326,29 @@ Format Rules:
         this.taskList.innerHTML = ''; // Clear existing tasks
 
         if (activeTasks.length > 0) {
-            const sectionLabel = document.createElement('div');
-            sectionLabel.className = 'section-label';
-            sectionLabel.textContent = 'ACTIVE';
-            this.taskList.appendChild(sectionLabel);
+            // Group active tasks by category or type
+            const groups = {};
             activeTasks.forEach(task => {
-                this.taskList.appendChild(this.createTaskHTML(task));
+                let groupName = task.category || 'personal';
+                if (task.type === 'meal') groupName = 'health';
+                if (task.type === 'note') groupName = 'personal';
+
+                if (!groups[groupName]) groups[groupName] = [];
+                groups[groupName].push(task);
+            });
+
+            // Priority order for groups
+            const groupOrder = ['urgent', 'work', 'health', 'shopping', 'personal'];
+            groupOrder.forEach(gn => {
+                if (groups[gn] && groups[gn].length > 0) {
+                    const sectionLabel = document.createElement('div');
+                    sectionLabel.className = 'section-label';
+                    sectionLabel.textContent = gn;
+                    this.taskList.appendChild(sectionLabel);
+                    groups[gn].forEach(task => {
+                        this.taskList.appendChild(this.createTaskHTML(task));
+                    });
+                }
             });
         }
 
@@ -1597,13 +1614,13 @@ Format Rules:
             const calories = parseInt(mealMatch[2]);
             const mealType = mealMatch[3] || 'snack';
 
-            this.addMealLog(food, calories, mealType);
+            this.addMealLog(food, calories, mealType, text);
             return true;
         }
         return false;
     }
 
-    addMealLog(food, calories, mealType) {
+    addMealLog(food, calories, mealType, fullText = '') {
         const meal = {
             id: Date.now(),
             food: food,
@@ -1614,8 +1631,9 @@ Format Rules:
         this.meals.unshift(meal);
         localStorage.setItem('doneMeals', JSON.stringify(this.meals));
 
-        // Also add to main card list
-        this.addTask(`${food} (${calories} cals)`, 'meal');
+        // Also add to main card list with full detail
+        const displayText = fullText || `${food} (${calories} cals)`;
+        this.addTask(displayText, 'meal');
 
         this.triggerSuccessAnimation();
         this.showToast(`Logged ${food} (${calories} cals)`);
