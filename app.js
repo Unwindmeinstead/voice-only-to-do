@@ -743,26 +743,28 @@ Format Rules:
             /^(what('s| is)|summarize|how many|suggest|help me|tell me)/i,
             /what do i have/i,
             /what('s|s| is) on my/i,
-            /show me (my )?(tasks|todos|calendar|schedule|list)/i,
+            /show me (my )?(tasks|todos|calendar|schedule|list|agenda|plan)/i,
             /hey ai/i,
             /ask ai/i,
             /my (tasks|calendar|schedule|plate|agenda|to do|todo)/i,
-            /prioritize|priorities/i
+            /prioritize|priorities/i,
+            /view (my )?(calendar|schedule|agenda|tasks|tracker)/i,
+            /open (up )?(the )?(calendar|tracker|settings)/i
         ];
 
         if (aiQueryPatterns.some(p => p.test(t))) {
             intent = 'ai';
             label = 'ASKING AI';
-        } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem')) {
+        } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem') || t.includes('remind me')) {
             intent = 'notification';
             label = 'REMINDER';
-        } else if (t.startsWith('note')) {
+        } else if (t.startsWith('note') || t.startsWith('stash') || t.startsWith('write down') || t.startsWith('record')) {
             intent = 'note';
             label = 'NOTE';
-        } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals|calorie tracker|pizza|burger|salad|sandwich|coffee|tea|water|juice|fruit|yogurt|cereal|bread|cheese|pasta)/i.test(t)) {
+        } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals|calorie tracker|meal|food|pizza|burger|salad|sandwich|coffee|tea|water|juice|fruit|yogurt|cereal|bread|cheese|pasta)/i.test(t)) {
             intent = 'meal';
             label = 'MEAL LOG';
-        } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
+        } else if (/^(event|calendar|meet|appoin|sched|agenda)/i.test(t) || t.includes('meeting') || t.includes('appointment')) {
             intent = 'event';
             label = 'EVENT';
         } else {
@@ -802,7 +804,17 @@ Format Rules:
                 body: JSON.stringify({
                     model: 'llama-3.1-8b-instant', // Fast model for live feedback
                     messages: [
-                        { role: 'system', content: 'Classify this short voice transcript for a todo app. Return JSON: {"intent": "task|notification|event|ai|note|meal", "label": "2-3 word uppercase label"}. Be concise. Example labels: URGENT TASK, WORK NOTE, HEALTH MEAL, FAMILY EVENT.' },
+                        {
+                            role: 'system', content: `Classify this voice transcript for a smart todo/calendar app.
+                        Return JSON: {"intent": "task|notification|event|ai|note|meal", "label": "2-3 word uppercase label"}.
+                        
+                        Semantic Rules:
+                        1. If seeking information/summary/navigation -> intent: "ai". Labels: OPENING CALENDAR, ANALYZING TASKS, ASKING AI.
+                        2. If logging food/eating -> intent: "meal". Labels: MEAL LOG, HEALTH ENTRY.
+                        3. If setting future alert -> intent: "notification". Labels: REMINDER, ALERT.
+                        4. If storing raw info -> intent: "note". Labels: STASHING NOTE, THOUGHT.
+                        5. If time-specific activity -> intent: "event". Labels: NEW EVENT, CALENDAR.
+                        6. Default to "task". Labels: NEW TASK, ACTION ITEM.` },
                         { role: 'user', content: text }
                     ],
                     max_tokens: 50,
