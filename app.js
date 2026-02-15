@@ -70,7 +70,9 @@ class VoiceTaskApp {
             /anything (urgent|important|pending|due)/i,
             /do i have/i,
             /prioritize|priorities/i,
-            /^(how|can you|could you|please)/i
+            /^(how|can you|could you|please)/i,
+            /open (meal|food) tracker/i,
+            /show (me )?(my )?(meals|food|calories)/i
         ];
 
         // Exclude specific creating commands to avoid false positives
@@ -79,6 +81,14 @@ class VoiceTaskApp {
         const isAIQuery = aiQueryPatterns.some(pattern => pattern.test(text));
 
         if (isAIQuery) {
+            // Check for navigation commands first
+            if (/open (meal|food) tracker|show (me )?(my )?(meals|food|calories)/i.test(text)) {
+                this.renderMealTracker();
+                this.mealTrackerModal.classList.add('show');
+                this.showToast('Opening Meal Tracker');
+                return true;
+            }
+
             this.showAIPanel(true);
             const response = await this.callGroqAI(text);
             if (response) {
@@ -361,6 +371,7 @@ Format Rules:
         this.editingTaskId = null;
 
         this.user = this.loadUser();
+        this.meals = this.loadMeals();
         this.initializeElements();
         this.initializeSpeechRecognition();
         this.initializeAudioContext();
@@ -404,6 +415,18 @@ Format Rules:
         // Intent elements
         this.intentIndicator = document.getElementById('intentIndicator');
         this.intentText = document.getElementById('intentText');
+
+        // Meal Tracker elements
+        this.mealTrackerModal = document.getElementById('mealTrackerModal');
+        this.closeMealTracker = document.getElementById('closeMealTracker');
+        this.mealList = document.getElementById('mealList');
+        this.totalCaloriesEl = document.getElementById('totalCalories');
+
+        if (this.closeMealTracker) {
+            this.closeMealTracker.addEventListener('click', () => {
+                this.mealTrackerModal.classList.remove('show');
+            });
+        }
 
         this.loadSettings();
 
@@ -853,6 +876,11 @@ Format Rules:
         // Resume Audio Context (iOS Policy)
         if (this.audioContext && this.audioContext.state === 'suspended') {
             this.audioContext.resume();
+        }
+
+        // Meal logging detection
+        if (this.detectMealIntent(text)) {
+            return;
         }
 
         // Handle Edit/Re-dictation if active
@@ -1540,6 +1568,67 @@ Format Rules:
 
             this.calendarGrid.appendChild(dayEl);
         }
+    }
+    detectMealIntent(text) {
+        const t = text.toLowerCase();
+        // Regex for: ate [food] with [cals] cals for [meal]
+        // or: [food] [cals] calories [meal]
+        const mealMatch = t.match(/(?:ate|had)\s+(.+?)(?:\s+(?:with|is|has))?\s+(\d+)\s*(?:cals|calories|cal)?(?:\s+(?:for|at))?\s*(lunch|dinner|breakfast|snack)?/i) ||
+            t.match(/(.+?)\s+(\d+)\s*(?:cals|calories|cal)(?:\s+(lunch|dinner|breakfast|snack))?/i);
+
+        if (mealMatch) {
+            const food = mealMatch[1].trim();
+            const calories = parseInt(mealMatch[2]);
+            const mealType = mealMatch[3] || 'snack';
+
+            this.addMealLog(food, calories, mealType);
+            return true;
+        }
+        return false;
+    }
+
+    addMealLog(food, calories, mealType) {
+        const meal = {
+            id: Date.now(),
+            food: food,
+            calories: calories,
+            type: mealType,
+            timestamp: new Date().toISOString()
+        };
+        this.meals.unshift(meal);
+        localStorage.setItem('doneMeals', JSON.stringify(this.meals));
+        this.triggerSuccessAnimation();
+        this.showToast(`Logged ${food} (${calories} cals)`);
+    }
+
+    loadMeals() {
+        const saved = localStorage.getItem('doneMeals');
+        return saved ? JSON.parse(saved) : [];
+    }
+
+    renderMealTracker() {
+        if (!this.mealList || !this.totalCaloriesEl) return;
+
+        const today = new Date().toISOString().split('T')[0];
+        const todaysMeals = this.meals.filter(m => m.timestamp.startsWith(today));
+
+        const totalCals = todaysMeals.reduce((sum, m) => sum + m.calories, 0);
+        this.totalCaloriesEl.textContent = totalCals;
+
+        if (todaysMeals.length === 0) {
+            this.mealList.innerHTML = '<div class="meal-tracker-empty">No meals logged today.</div>';
+            return;
+        }
+
+        this.mealList.innerHTML = todaysMeals.map(m => `
+            <div class="meal-card">
+                <div class="meal-info">
+                    <div class="meal-name">${this.escapeHtml(m.food)}</div>
+                    <div class="meal-meta">${m.type} • ${new Date(m.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                </div>
+                <div class="meal-calories">${m.calories} <span>KCAL</span></div>
+            </div>
+        `).join('');
     }
 }
 

@@ -1380,6 +1380,81 @@
             background: rgba(74, 222, 128, 0.1);
         }
 
+        /* Meal Tracker Styles */
+        .meal-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .meal-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .meal-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: #ffffff;
+        }
+
+        .meal-meta {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .meal-calories {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ff9f0a;
+            /* Apple Orange */
+        }
+
+        .meal-calories span {
+            font-size: 10px;
+            font-weight: 400;
+            opacity: 0.5;
+            margin-left: 2px;
+        }
+
+        .meal-summary {
+            background: linear-gradient(135deg, rgba(255, 159, 10, 0.1), rgba(255, 69, 58, 0.1));
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            text-align: center;
+            border: 1px solid rgba(255, 159, 10, 0.1);
+        }
+
+        .summary-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .summary-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .meal-tracker-empty {
+            text-align: center;
+            opacity: 0.4;
+            padding: 40px 20px;
+            font-size: 14px;
+        }
+
         @media (min-width: 768px) {
             .app-shell {
                 border-radius: 24px;
@@ -1595,6 +1670,25 @@
                             <!-- Tasks will be injected here -->
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meal Tracker Modal -->
+    <div id="mealTrackerModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Meal Tracker</div>
+                <button id="closeMealTracker" class="close-modal">Done</button>
+            </div>
+            <div class="settings-list" style="padding: 20px;">
+                <div id="mealSummary" class="meal-summary">
+                    <div class="summary-value" id="totalCalories">0</div>
+                    <div class="summary-label">Total Calories Today</div>
+                </div>
+                <div id="mealList">
+                    <!-- Meals injected by JS -->
                 </div>
             </div>
         </div>
