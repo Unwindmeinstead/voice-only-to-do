@@ -370,8 +370,6 @@ Format Rules:
         this.playBeep = null;
         this.editingTaskId = null;
         this.intentDebounceTimer = null;
-        this.dictationMode = null;
-        this.dictationModeLocked = false;
 
         this.user = this.loadUser();
         this.meals = this.loadMeals();
@@ -711,84 +709,54 @@ Format Rules:
         }
 
         const t = text.toLowerCase().trim();
-
-        // Guided Mode Locking Logic
-        if (!this.dictationModeLocked) {
-            if (/^(add a meal|log food|meal)/i.test(t)) {
-                this.dictationMode = 'meal';
-                this.dictationModeLocked = true;
-            } else if (/^(add a note|new note|note)/i.test(t)) {
-                this.dictationMode = 'note';
-                this.dictationModeLocked = true;
-            } else if (/^(add an event|schedule|event)/i.test(t)) {
-                this.dictationMode = 'event';
-                this.dictationModeLocked = true;
-            } else if (/^(add a task|new task|task)/i.test(t)) {
-                this.dictationMode = 'task';
-                this.dictationModeLocked = true;
-            } else if (/^(remind me|reminder)/i.test(t)) {
-                this.dictationMode = 'notification';
-                this.dictationModeLocked = true;
-            }
-        }
-
         let intent = 'task';
         let label = 'NEW TASK';
 
-        if (this.dictationModeLocked) {
-            intent = this.dictationMode;
-            label = this.dictationMode.toUpperCase() + ' MODE';
-            this.intentIndicator.classList.add('locked');
+        // AI Query detection
+        const aiQueryPatterns = [
+            /^(what('s| is)|summarize|how many|suggest|help me|tell me)/i,
+            /what do i have/i,
+            /what('s|s| is) on my/i,
+            /show me (my )?(tasks|todos|calendar|schedule|list)/i,
+            /hey ai/i,
+            /ask ai/i,
+            /my (tasks|calendar|schedule|plate|agenda|to do|todo)/i,
+            /prioritize|priorities/i
+        ];
+
+        if (aiQueryPatterns.some(p => p.test(t))) {
+            intent = 'ai';
+            label = 'ASKING AI';
+        } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem')) {
+            intent = 'notification';
+            label = 'REMINDER';
+        } else if (t.startsWith('note')) {
+            intent = 'note';
+            label = 'NOTE';
+        } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals|calorie tracker|pizza|burger|salad|sandwich|coffee|tea|water|juice|fruit|yogurt|cereal|bread|cheese|pasta)/i.test(t)) {
+            intent = 'meal';
+            label = 'MEAL LOG';
+        } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
+            intent = 'event';
+            label = 'EVENT';
         } else {
-            // Fallback to previous logic if not locked
-            this.intentIndicator.classList.remove('locked');
-
-            // AI Query detection
-            const aiQueryPatterns = [
-                /^(what('s| is)|summarize|how many|suggest|help me|tell me)/i,
-                /what do i have/i,
-                /what('s|s| is) on my/i,
-                /show me (my )?(tasks|todos|calendar|schedule|list)/i,
-                /hey ai/i,
-                /ask ai/i,
-                /my (tasks|calendar|schedule|plate|agenda|to do|todo)/i,
-                /prioritize|priorities/i
-            ];
-
-            if (aiQueryPatterns.some(p => p.test(t))) {
-                intent = 'ai';
-                label = 'ASKING AI';
-            } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem')) {
-                intent = 'notification';
-                label = 'REMINDER';
-            } else if (t.startsWith('note')) {
-                intent = 'note';
-                label = 'NOTE';
-            } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals|calorie tracker)/i.test(t)) {
-                intent = 'meal';
-                label = 'MEAL LOG';
-            } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
+            const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'pm', 'am', 'next'];
+            if (dateKeywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(t))) {
                 intent = 'event';
                 label = 'EVENT';
-            } else {
-                const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'pm', 'am', 'next'];
-                if (dateKeywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(t))) {
-                    intent = 'event';
-                    label = 'EVENT';
-                }
             }
         }
 
-        this.intentIndicator.className = 'intent-indicator show ' + intent + (this.dictationModeLocked ? ' locked' : '');
+        this.intentIndicator.className = 'intent-indicator show ' + intent;
         this.intentText.textContent = label;
 
-        // Debounced AI refinement only if NOT locked or if it's an AI query
-        if (text.length > 5 && (!this.dictationModeLocked || intent === 'ai')) {
+        // Debounced AI refinement
+        if (text.length > 5) {
             clearTimeout(this.intentDebounceTimer);
             this.intentDebounceTimer = setTimeout(async () => {
                 const refined = await this.callLiveIntentAI(text);
-                if (refined && this.isRecording && (!this.dictationModeLocked || refined.intent === 'ai')) {
-                    this.intentIndicator.className = 'intent-indicator show ' + refined.intent + (this.dictationModeLocked ? ' locked' : '');
+                if (refined && this.isRecording) {
+                    this.intentIndicator.className = 'intent-indicator show ' + refined.intent;
                     this.intentText.textContent = refined.label;
                 }
             }, 600);
@@ -836,10 +804,6 @@ Format Rules:
 
     startRecording() {
         if (this.recognition) {
-            // Reset guided dictation state
-            this.dictationMode = null;
-            this.dictationModeLocked = false;
-
             this.recognition.start();
             this.startVisualizer();
         }
@@ -963,43 +927,7 @@ Format Rules:
             this.audioContext.resume();
         }
 
-        // Two-Step Guided Logic
-        if (this.dictationModeLocked && this.dictationMode) {
-            const currentMode = this.dictationMode;
-            this.dictationModeLocked = false;
-            this.dictationMode = null;
-
-            // Strip the command keywords
-            let finalContent = transcript;
-            const keywords = [
-                /^(add a meal|log food|meal)/i,
-                /^(add a note|new note|note)/i,
-                /^(add an event|schedule|event)/i,
-                /^(add a task|new task|task)/i,
-                /^(remind me|reminder)/i
-            ];
-
-            keywords.forEach(kw => {
-                finalContent = finalContent.replace(kw, '').trim();
-            });
-
-            if (finalContent.length > 0) {
-                if (currentMode === 'meal') {
-                    // Re-run meal detection on the stripped text or just log it
-                    // To keep it simple, if they said "add a meal 500 calories", we log it.
-                    // But we already have a robust detectMealIntent, so let's try that first
-                    if (!this.detectMealIntent(finalContent)) {
-                        // Fallback: log as generic meal if regex fails but mode was locked
-                        this.addMealLog(finalContent, 0, 'snack', finalContent);
-                    }
-                } else {
-                    this.addTask(finalContent, currentMode);
-                }
-                return;
-            }
-        }
-
-        // Meal logging detection (Standard fallback)
+        // Meal logging detection
         if (this.detectMealIntent(text)) {
             return;
         }
@@ -1714,19 +1642,46 @@ Format Rules:
     }
     detectMealIntent(text) {
         const t = text.toLowerCase();
-        // Regex for: ate [food] with [cals] cals for [meal]
-        // or: [food] [cals] calories [meal]
-        const mealMatch = t.match(/(?:ate|had)\s+(.+?)(?:\s+(?:with|is|has))?\s+(\d+)\s*(?:cals|calories|cal)?(?:\s+(?:for|at))?\s*(lunch|dinner|breakfast|snack)?/i) ||
+
+        // 1. Matches with calories: ate [food] 500 calories
+        const calorieMatch = t.match(/(?:ate|had|log|new)\s+(.+?)(?:\s+(?:with|is|has))?\s+(\d+)\s*(?:cals|calories|cal)?(?:\s+(?:for|at))?\s*(lunch|dinner|breakfast|snack)?/i) ||
             t.match(/(.+?)\s+(\d+)\s*(?:cals|calories|cal)(?:\s+(lunch|dinner|breakfast|snack))?/i);
 
-        if (mealMatch) {
-            const food = mealMatch[1].trim();
-            const calories = parseInt(mealMatch[2]);
-            const mealType = mealMatch[3] || 'snack';
-
+        if (calorieMatch) {
+            const food = calorieMatch[1].trim();
+            const calories = parseInt(calorieMatch[2]);
+            const mealType = calorieMatch[3] || 'snack';
             this.addMealLog(food, calories, mealType, text);
             return true;
         }
+
+        // 2. Matches without calories: ate pizza, I had a burger, pizza for lunch
+        const foodPhrases = [
+            /^(?:i\s+)?(?:ate|had|logging|log)\s+(.+?)(?:\s+(?:for|at)\s+(lunch|dinner|breakfast|snack))?$/i,
+            /(.+?)\s+(?:for|at)\s+(lunch|dinner|breakfast|snack)$/i,
+            /^(?:add|new)\s+meal\s+(.+)$/i
+        ];
+
+        for (const pattern of foodPhrases) {
+            const match = t.match(pattern);
+            if (match) {
+                const food = match[1].trim();
+                const mealType = match[2] || 'snack';
+                // If it's just a common word like "today" or "tomorrow", skip
+                if (['today', 'tomorrow', 'now'].includes(food)) continue;
+
+                this.addMealLog(food, 0, mealType, text);
+                return true;
+            }
+        }
+
+        // 3. Fallback for specific food names at the start
+        const commonFoods = ['pizza', 'burger', 'salad', 'sandwich', 'coffee', 'tea', 'water', 'juice', 'fruit', 'yogurt', 'cereal', 'bread', 'cheese', 'pasta'];
+        if (commonFoods.some(food => t.startsWith(food))) {
+            this.addMealLog(t, 0, 'snack', text);
+            return true;
+        }
+
         return false;
     }
 
