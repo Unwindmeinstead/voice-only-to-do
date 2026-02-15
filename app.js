@@ -118,15 +118,6 @@ class VoiceTaskApp {
             `;
         } else {
             body.innerHTML = this.formatAIResponse(content);
-
-            // Attach event listeners to new checkboxes
-            const checkboxes = body.querySelectorAll('.ai-list-checkbox');
-            checkboxes.forEach(cb => {
-                cb.closest('li').addEventListener('click', (e) => {
-                    const text = cb.dataset.taskText;
-                    this.toggleAITaskCompletion(text, cb);
-                });
-            });
         }
 
         overlay.classList.add('show');
@@ -188,7 +179,6 @@ class VoiceTaskApp {
                 };
 
                 html += `<li class="${completedClass}">
-                    <div class="ai-list-checkbox ${checkedClass}" data-task-text="${this.escapeHtml(clean)}"></div>
                     <div class="ai-list-type-icon ${type}">${iconMap[type] || iconMap.task}</div>
                     <span>${this.escapeHtml(clean)}</span>
                 </li>`;
@@ -229,16 +219,17 @@ class VoiceTaskApp {
             const totalCount = this.tasks.length;
 
             const systemPrompt = `You are a concise, ultra-minimal AI assistant for "Done".
-Current pending tasks (${totalCount - completedCount} active, ${completedCount} completed):
-${taskList || 'No tasks yet.'}
+Current ACTIVE tasks (${totalCount - completedCount} active):
+${taskList || 'NO ACTIVE TASKS.'}
 
 Format Rules:
-1. Start with a short, punchy headline
-2. Follow with a list of tasks using "-" bullets
-3. DO NOT include type markers (like [event]) in the final response
-4. End with a very brief, encouraging takeaway
-5. Keep it under 150 words
-6. Use clear, simple language`;
+1. Start with a short, punchy headline.
+2. Follow with a list of tasks using "-" bullets.
+3. DO NOT include type markers (like [event]) in the final response.
+4. End with a very brief takeaway.
+5. If there are NO ACTIVE TASKS, strictly say "You have a clear plate" or similar.
+6. CRITICAL: DO NOT hallucinate. ONLY list tasks provided in the list above. If the user asks for "tomorrow" and nothing is scheduled, say "Nothing for tomorrow".
+7. Keep it under 100 words.`;
 
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
