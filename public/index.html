@@ -489,6 +489,25 @@
             gap: 6px;
         }
 
+        .intent-indicator.locked {
+            border: 1.5px solid rgba(255, 255, 255, 0.4);
+            animation: intent-pulse 2s infinite;
+        }
+
+        @keyframes intent-pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(255, 255, 255, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+            }
+        }
+
         .intent-indicator.show {
             opacity: 1;
             transform: translateY(0);

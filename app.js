@@ -370,6 +370,8 @@ Format Rules:
         this.playBeep = null;
         this.editingTaskId = null;
         this.intentDebounceTimer = null;
+        this.dictationMode = null;
+        this.dictationModeLocked = false;
 
         this.user = this.loadUser();
         this.meals = this.loadMeals();
@@ -709,55 +711,84 @@ Format Rules:
         }
 
         const t = text.toLowerCase().trim();
-        let intent = 'task';
-        let label = 'NEW TASK';
 
-        // AI Query detection
-        const aiQueryPatterns = [
-            /^(what('s| is)|summarize|how many|suggest|help me|tell me)/i,
-            /what do i have/i,
-            /what('s|s| is) on my/i,
-            /show me (my )?(tasks|todos|calendar|schedule|list)/i,
-            /hey ai/i,
-            /ask ai/i,
-            /my (tasks|calendar|schedule|plate|agenda|to do|todo)/i,
-            /prioritize|priorities/i
-        ];
-
-        if (aiQueryPatterns.some(p => p.test(t))) {
-            intent = 'ai';
-            label = 'ASKING AI';
-        } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem')) {
-            intent = 'notification';
-            label = 'REMINDER';
-        } else if (t.startsWith('note')) {
-            intent = 'note';
-            label = 'NOTE';
-        } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals)/i.test(t)) {
-            intent = 'meal';
-            label = 'MEAL LOG';
-        } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
-            intent = 'event';
-            label = 'EVENT';
-        } else {
-            // Check for date keywords for events
-            const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'pm', 'am', 'next'];
-            if (dateKeywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(t))) {
-                intent = 'event';
-                label = 'EVENT';
+        // Guided Mode Locking Logic
+        if (!this.dictationModeLocked) {
+            if (/^(add a meal|log food|meal)/i.test(t)) {
+                this.dictationMode = 'meal';
+                this.dictationModeLocked = true;
+            } else if (/^(add a note|new note|note)/i.test(t)) {
+                this.dictationMode = 'note';
+                this.dictationModeLocked = true;
+            } else if (/^(add an event|schedule|event)/i.test(t)) {
+                this.dictationMode = 'event';
+                this.dictationModeLocked = true;
+            } else if (/^(add a task|new task|task)/i.test(t)) {
+                this.dictationMode = 'task';
+                this.dictationModeLocked = true;
+            } else if (/^(remind me|reminder)/i.test(t)) {
+                this.dictationMode = 'notification';
+                this.dictationModeLocked = true;
             }
         }
 
-        this.intentIndicator.className = 'intent-indicator show ' + intent;
+        let intent = 'task';
+        let label = 'NEW TASK';
+
+        if (this.dictationModeLocked) {
+            intent = this.dictationMode;
+            label = this.dictationMode.toUpperCase() + ' MODE';
+            this.intentIndicator.classList.add('locked');
+        } else {
+            // Fallback to previous logic if not locked
+            this.intentIndicator.classList.remove('locked');
+
+            // AI Query detection
+            const aiQueryPatterns = [
+                /^(what('s| is)|summarize|how many|suggest|help me|tell me)/i,
+                /what do i have/i,
+                /what('s|s| is) on my/i,
+                /show me (my )?(tasks|todos|calendar|schedule|list)/i,
+                /hey ai/i,
+                /ask ai/i,
+                /my (tasks|calendar|schedule|plate|agenda|to do|todo)/i,
+                /prioritize|priorities/i
+            ];
+
+            if (aiQueryPatterns.some(p => p.test(t))) {
+                intent = 'ai';
+                label = 'ASKING AI';
+            } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem')) {
+                intent = 'notification';
+                label = 'REMINDER';
+            } else if (t.startsWith('note')) {
+                intent = 'note';
+                label = 'NOTE';
+            } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals)/i.test(t)) {
+                intent = 'meal';
+                label = 'MEAL LOG';
+            } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
+                intent = 'event';
+                label = 'EVENT';
+            } else {
+                const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'pm', 'am', 'next'];
+                if (dateKeywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(t))) {
+                    intent = 'event';
+                    label = 'EVENT';
+                }
+            }
+        }
+
+        this.intentIndicator.className = 'intent-indicator show ' + intent + (this.dictationModeLocked ? ' locked' : '');
         this.intentText.textContent = label;
 
-        // Refine with AI if text is substantial
-        if (text.length > 5) {
+        // Debounced AI refinement only if NOT locked or if it's an AI query
+        if (text.length > 5 && (!this.dictationModeLocked || intent === 'ai')) {
             clearTimeout(this.intentDebounceTimer);
             this.intentDebounceTimer = setTimeout(async () => {
                 const refined = await this.callLiveIntentAI(text);
-                if (refined && this.isRecording) {
-                    this.intentIndicator.className = 'intent-indicator show ' + refined.intent;
+                if (refined && this.isRecording && (!this.dictationModeLocked || refined.intent === 'ai')) {
+                    this.intentIndicator.className = 'intent-indicator show ' + refined.intent + (this.dictationModeLocked ? ' locked' : '');
                     this.intentText.textContent = refined.label;
                 }
             }, 600);
@@ -805,6 +836,10 @@ Format Rules:
 
     startRecording() {
         if (this.recognition) {
+            // Reset guided dictation state
+            this.dictationMode = null;
+            this.dictationModeLocked = false;
+
             this.recognition.start();
             this.startVisualizer();
         }
@@ -921,14 +956,50 @@ Format Rules:
     }
 
     async processVoiceCommand(transcript) {
-        const text = transcript.toLowerCase().trim();
+        let text = transcript.toLowerCase().trim();
 
         // Resume Audio Context (iOS Policy)
         if (this.audioContext && this.audioContext.state === 'suspended') {
             this.audioContext.resume();
         }
 
-        // Meal logging detection
+        // Two-Step Guided Logic
+        if (this.dictationModeLocked && this.dictationMode) {
+            const currentMode = this.dictationMode;
+            this.dictationModeLocked = false;
+            this.dictationMode = null;
+
+            // Strip the command keywords
+            let finalContent = transcript;
+            const keywords = [
+                /^(add a meal|log food|meal)/i,
+                /^(add a note|new note|note)/i,
+                /^(add an event|schedule|event)/i,
+                /^(add a task|new task|task)/i,
+                /^(remind me|reminder)/i
+            ];
+
+            keywords.forEach(kw => {
+                finalContent = finalContent.replace(kw, '').trim();
+            });
+
+            if (finalContent.length > 0) {
+                if (currentMode === 'meal') {
+                    // Re-run meal detection on the stripped text or just log it
+                    // To keep it simple, if they said "add a meal 500 calories", we log it.
+                    // But we already have a robust detectMealIntent, so let's try that first
+                    if (!this.detectMealIntent(finalContent)) {
+                        // Fallback: log as generic meal if regex fails but mode was locked
+                        this.addMealLog(finalContent, 0, 'snack', finalContent);
+                    }
+                } else {
+                    this.addTask(finalContent, currentMode);
+                }
+                return;
+            }
+        }
+
+        // Meal logging detection (Standard fallback)
         if (this.detectMealIntent(text)) {
             return;
         }
@@ -951,11 +1022,11 @@ Format Rules:
         const handledByAI = await this.processWithAI(text);
         if (handledByAI) return;
 
-        // Type Intelligence (Task / Notification / Event)
+        // Type Intelligence (Task / Notification / Event / Note)
         let type = 'task';
-        let finalContent = text;
+        let finalContent = transcript;
 
-        // Date/Time keywords with word boundaries to avoid partial matches (e.g., 'am' in 'Amazon')
+        // Date/Time keywords with word boundaries to avoid partial matches
         const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'morning', 'afternoon', 'evening', 'night', 'tonight', 'pm', 'am'];
 
         const hasDateKeyword = dateKeywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(text));
@@ -964,28 +1035,23 @@ Format Rules:
 
         if (text.startsWith('remind me') || text.startsWith('notification') || text.startsWith('alert') || text.startsWith('remember')) {
             type = 'notification';
-            finalContent = text.replace('remind me', '').replace('notification', '').replace('alert', '').replace('remember', '').trim();
+            finalContent = transcript.replace(/remind me|notification|alert|remember/i, '').trim();
         } else if (/^(event|calendar|meeting|appointment|schedule)/i.test(text) || text.includes('meeting')) {
             type = 'event';
-            finalContent = text.replace(/^(add|create|schedule|book|new|make)\s+(a|an)?\s*/i, '')
+            finalContent = transcript.replace(/^(add|create|schedule|book|new|make)\s+(a|an)?\s*/i, '')
                 .replace(/\s+for\s+/i, ' ')
                 .trim();
         } else if (hasDateKeyword || hasTimePattern || hasNumericalDate) {
-            // Assume event if date/time is specific
             type = 'event';
         }
 
-        // Syncing with user preference: if they said "note", treat as task or notification
         if (text.startsWith('note')) {
             type = 'note';
-            finalContent = text.replace('note', '').trim();
+            finalContent = transcript.replace(/note/i, '').trim();
         }
 
-        // Parse date from text
-        const parsedDate = this.parseDateFromText(text);
-
         if (finalContent.length > 0) {
-            this.addTask(finalContent, type, parsedDate);
+            this.addTask(finalContent, type);
         }
     }
 
