@@ -369,6 +369,7 @@ Format Rules:
         this.recognition = null;
         this.playBeep = null;
         this.editingTaskId = null;
+        this.intentDebounceTimer = null;
 
         this.user = this.loadUser();
         this.meals = this.loadMeals();
@@ -749,6 +750,49 @@ Format Rules:
 
         this.intentIndicator.className = 'intent-indicator show ' + intent;
         this.intentText.textContent = label;
+
+        // Refine with AI if text is substantial
+        if (text.length > 5) {
+            clearTimeout(this.intentDebounceTimer);
+            this.intentDebounceTimer = setTimeout(async () => {
+                const refined = await this.callLiveIntentAI(text);
+                if (refined && this.isRecording) {
+                    this.intentIndicator.className = 'intent-indicator show ' + refined.intent;
+                    this.intentText.textContent = refined.label;
+                }
+            }, 600);
+        }
+    }
+
+    async callLiveIntentAI(text) {
+        if (!this.GROQ_API_KEY) return null;
+
+        try {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.GROQ_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'llama-3.1-8b-instant', // Fast model for live feedback
+                    messages: [
+                        { role: 'system', content: 'Classify this short voice transcript for a todo app. Return JSON: {"intent": "task|notification|event|ai|note|meal", "label": "2-3 word uppercase label"}. Be concise. Example labels: URGENT TASK, WORK NOTE, HEALTH MEAL, FAMILY EVENT.' },
+                        { role: 'user', content: text }
+                    ],
+                    max_tokens: 50,
+                    temperature: 0.1,
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!response.ok) return null;
+            const data = await response.json();
+            return JSON.parse(data.choices?.[0]?.message?.content || '{}');
+        } catch (error) {
+            console.error('Live Intent AI Error:', error);
+            return null;
+        }
     }
 
     toggleRecording() {
