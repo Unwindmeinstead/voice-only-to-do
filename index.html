@@ -352,11 +352,12 @@
         }
 
         .bar {
-            width: 3.5px;
+            width: 5px;
             background: #000000;
             border-radius: 99px;
-            opacity: 0.85;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            opacity: 1;
+            transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: height;
         }
 
         /* Offline heights */
