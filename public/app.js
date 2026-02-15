@@ -726,9 +726,15 @@ Format Rules:
         if (aiQueryPatterns.some(p => p.test(t))) {
             intent = 'ai';
             label = 'ASKING AI';
-        } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem') || t.startsWith('note')) {
+        } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem')) {
             intent = 'notification';
             label = 'REMINDER';
+        } else if (t.startsWith('note')) {
+            intent = 'note';
+            label = 'NOTE';
+        } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals)/i.test(t)) {
+            intent = 'meal';
+            label = 'MEAL';
         } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
             intent = 'event';
             label = 'EVENT';
@@ -927,6 +933,7 @@ Format Rules:
 
         // Syncing with user preference: if they said "note", treat as task or notification
         if (text.startsWith('note')) {
+            type = 'note';
             finalContent = text.replace('note', '').trim();
         }
 
@@ -1369,19 +1376,26 @@ Format Rules:
             icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> NOTIFICATION`;
         } else if (type === 'event') {
             icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> EVENT`;
+        } else if (type === 'note') {
+            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> NOTE`;
+        } else if (type === 'meal') {
+            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg> MEAL`;
         } else {
             icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> TASK`;
         }
 
+        const showCheckbox = type !== 'note' && type !== 'meal';
+
         div.innerHTML = `
             <article class="task-card ${type} ${task.completed ? 'completed' : ''} ${isEditing ? 'editing' : ''}" data-id="${task.id}">
+                ${showCheckbox ? `
                 <input
                     id="task-check-${task.id}"
                     class="task-checkbox"
                     type="checkbox"
                     ${task.completed ? 'checked' : ''}
                     aria-label="Mark task as ${task.completed ? 'active' : 'completed'}"
-                />
+                />` : ''}
                 <div class="task-main">
                     <div class="task-labels" style="display: flex; gap: 6px; align-items: center; margin-bottom: 4px;">
                         <span class="ai-label">${categoryIcons[category] || categoryIcons.personal}</span>
@@ -1410,7 +1424,9 @@ Format Rules:
             </article>
         `;
 
-        div.querySelector('.task-checkbox').addEventListener('change', () => this.toggleTask(task.id));
+        if (showCheckbox) {
+            div.querySelector('.task-checkbox').addEventListener('change', () => this.toggleTask(task.id));
+        }
         div.querySelector('.task-edit').addEventListener('click', () => this.editTask(task.id));
         div.querySelector('.task-delete').addEventListener('click', () => this.deleteTaskById(task.id));
 
@@ -1597,6 +1613,10 @@ Format Rules:
         };
         this.meals.unshift(meal);
         localStorage.setItem('doneMeals', JSON.stringify(this.meals));
+
+        // Also add to main card list
+        this.addTask(`${food} (${calories} cals)`, 'meal');
+
         this.triggerSuccessAnimation();
         this.showToast(`Logged ${food} (${calories} cals)`);
     }
