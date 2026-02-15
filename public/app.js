@@ -1598,11 +1598,79 @@ JSON format:
         const diffDays = Math.floor(diffMs / 86400000);
 
         if (diffMins < 1) return 'Just now';
+
+        // Handle future dates (reminders)
+        if (diffMs < 0) {
+            const futureMins = Math.abs(diffMins);
+            const futureHours = Math.abs(diffHours);
+            const futureDays = Math.abs(diffDays);
+            if (futureMins < 60) return `in ${futureMins} min${futureMins > 1 ? 's' : ''}`;
+            if (futureHours < 24) return `in ${futureHours} hour${futureHours > 1 ? 's' : ''}`;
+            return `in ${futureDays} day${futureDays > 1 ? 's' : ''}`;
+        }
+
         if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
         if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
         if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 
         return date.toLocaleDateString();
+    }
+
+    setReminder(taskId) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        // Simple prompt for now - can be upgraded to a modal
+        // Using datetime-local format for easy parsing if we use a hidden input, 
+        // but for now let's just use a text prompt that supports basic natural language or ISO
+        // Actually, let's create a temporary hidden date input to trigger the browser's native picker
+
+        let dateInput = document.createElement('input');
+        dateInput.type = 'datetime-local';
+        dateInput.style.display = 'none';
+        document.body.appendChild(dateInput);
+
+        dateInput.onchange = () => {
+            if (dateInput.value) {
+                const newTime = new Date(dateInput.value);
+                task.reminderTime = newTime.toISOString();
+                // We could also update createdAt to sort it differently if we wanted, 
+                // but let's keep createdAt as creation time.
+                // Maybe update text to reflect? No, cleaner to keep text pure.
+
+                this.saveTasks();
+                this.renderTasks();
+                this.showToast(`Reminder set for ${newTime.toLocaleString()}`);
+
+                // Schedule local notification if supported
+                if (this.soundsEnabled) {
+                    // Set a timeout to play a sound? 
+                    // For PWA, simple timeout works if app is open
+                    const delay = newTime.getTime() - Date.now();
+                    if (delay > 0) {
+                        setTimeout(() => {
+                            this.showToast(`Reminder: ${task.text}`);
+                            if (this.playBeep) this.playBeep();
+                        }, delay);
+                    }
+                }
+            }
+            document.body.removeChild(dateInput);
+        };
+
+        dateInput.oncancel = () => {
+            document.body.removeChild(dateInput);
+        }
+
+        // Trigger picker
+        if (typeof dateInput.showPicker === 'function') {
+            dateInput.showPicker();
+        } else {
+            // Fallback for browsers without showPicker (Old Safari)
+            dateInput.click();
+            // If click doesn't work (security policy), we might need to append it visibly briefly
+            // But showPicker is widely supported in modern mobile/desktop now.
+        }
     }
 
     toggleTask(taskId) {
@@ -1787,6 +1855,14 @@ JSON format:
                     <div class="task-meta">${this.formatRelativeDate(task.createdAt)}</div>
                 </div>
                 <div style="display: flex; gap: 4px;">
+                    ${type === 'notification' ? `
+                    <button class="task-reminder" title="Set Reminder Time" aria-label="Set Reminder">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${task.reminderTime ? '#fbbf24' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            ${task.reminderTime ? '<circle cx="12" cy="8" r="3" fill="#fbbf24" stroke="none"></circle>' : ''}
+                        </svg>
+                    </button>` : ''}
                     <button class="task-edit" title="Retry / Re-dictate" aria-label="Re-dictate task">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M23 4v6h-6"></path>
@@ -1805,6 +1881,9 @@ JSON format:
 
         if (showCheckbox) {
             div.querySelector('.task-checkbox').addEventListener('change', () => this.toggleTask(task.id));
+        }
+        if (type === 'notification') {
+            div.querySelector('.task-reminder').addEventListener('click', () => this.setReminder(task.id));
         }
         div.querySelector('.task-edit').addEventListener('click', () => this.editTask(task.id));
         div.querySelector('.task-delete').addEventListener('click', () => this.deleteTaskById(task.id));
