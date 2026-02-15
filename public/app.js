@@ -89,6 +89,13 @@ class VoiceTaskApp {
                 return true;
             }
 
+            if (/open (my )?calendar|show (my )?calendar|calendar/i.test(text)) {
+                this.renderCalendar();
+                this.calendarModal.classList.add('show');
+                this.showToast('Opening Calendar');
+                return true;
+            }
+
             this.showAIPanel(true);
             const response = await this.callGroqAI(text);
             if (response) {
@@ -1729,9 +1736,51 @@ Format Rules:
                     <div class="meal-name">${this.escapeHtml(m.food)}</div>
                     <div class="meal-meta">${m.type} • ${new Date(m.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                 </div>
-                <div class="meal-calories">${m.calories} <span>KCAL</span></div>
+                <div class="meal-actions" style="display: flex; gap: 8px; align-items: center;">
+                    <div class="meal-calories">${m.calories} <span>KCAL</span></div>
+                    <button class="edit-meal-btn" data-id="${m.id}" style="background: rgba(255,255,255,0.05); border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="delete-meal-btn" data-id="${m.id}" style="background: rgba(255,59,48,0.1); border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #ff3b30;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18m-2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
             </div>
         `).join('');
+
+        // Attach listeners
+        this.calorieList.querySelectorAll('.edit-meal-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.editMeal(btn.dataset.id));
+        });
+        this.calorieList.querySelectorAll('.delete-meal-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.deleteMeal(btn.dataset.id));
+        });
+    }
+
+    editMeal(id) {
+        const meal = this.meals.find(m => m.id == id);
+        if (!meal) return;
+
+        const newFood = prompt('Edit meal name:', meal.food);
+        if (newFood === null) return;
+
+        const newCalories = prompt('Edit calories:', meal.calories);
+        if (newCalories === null) return;
+
+        meal.food = newFood.trim();
+        meal.calories = parseInt(newCalories) || 0;
+
+        localStorage.setItem('doneMeals', JSON.stringify(this.meals));
+        this.renderMealTracker();
+        this.showToast('Meal updated');
+    }
+
+    deleteMeal(id) {
+        if (!confirm('Are you sure you want to delete this entry?')) return;
+        this.meals = this.meals.filter(m => m.id != id);
+        localStorage.setItem('doneMeals', JSON.stringify(this.meals));
+        this.renderMealTracker();
+        this.showToast('Meal deleted');
     }
 }
 
