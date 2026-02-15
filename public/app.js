@@ -401,6 +401,10 @@ Format Rules:
         this.calendarGrid = document.getElementById('calendarGrid');
         this.calendarHeader = document.getElementById('calendarHeader');
 
+        // Intent elements
+        this.intentIndicator = document.getElementById('intentIndicator');
+        this.intentText = document.getElementById('intentText');
+
         this.loadSettings();
 
         this.micButton.addEventListener('click', () => this.toggleRecording());
@@ -649,6 +653,9 @@ Format Rules:
             this.transcriptText.textContent = transcript;
             this.transcription.classList.add('show');
 
+            // Live Intent Detection
+            this.detectLiveIntent(transcript);
+
             if (event.results[0].isFinal) {
                 this.processVoiceCommand(transcript);
             }
@@ -667,6 +674,50 @@ Format Rules:
         this.recognition.onend = () => {
             this.stopRecording();
         };
+    }
+
+    detectLiveIntent(text) {
+        if (!text || text.length < 2) {
+            this.intentIndicator.classList.remove('show');
+            return;
+        }
+
+        const t = text.toLowerCase();
+        let intent = 'task';
+        let label = 'NEW TASK';
+
+        // AI Query detection
+        const aiQueryPatterns = [
+            /^(what('s| is)|summarize|how many|suggest|help me|tell me)/i,
+            /what do i have/i,
+            /what('s|s| is) on my/i,
+            /show me (my )?(tasks|todos|calendar|schedule|list)/i,
+            /hey ai/i,
+            /ask ai/i,
+            /my (tasks|calendar|schedule|plate|agenda|to do|todo)/i,
+            /prioritize|priorities/i
+        ];
+
+        if (aiQueryPatterns.some(p => p.test(t))) {
+            intent = 'ai';
+            label = 'ASKING AI';
+        } else if (t.startsWith('remind') || t.startsWith('notif') || t.startsWith('alert') || t.startsWith('remem')) {
+            intent = 'notification';
+            label = 'REMINDER';
+        } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
+            intent = 'event';
+            label = 'EVENT';
+        } else {
+            // Check for date keywords for events
+            const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'pm', 'am'];
+            if (dateKeywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(t))) {
+                intent = 'event';
+                label = 'EVENT';
+            }
+        }
+
+        this.intentIndicator.className = 'intent-indicator show ' + intent;
+        this.intentText.textContent = label;
     }
 
     toggleRecording() {
@@ -765,6 +816,7 @@ Format Rules:
         const delay = immediate ? 0 : 400;
         setTimeout(() => {
             this.transcription.classList.remove('show');
+            this.intentIndicator.classList.remove('show');
             this.transcriptText.textContent = '';
             // Reset editing state if it was active but not handled
             if (this.editingTaskId && !immediate) {
