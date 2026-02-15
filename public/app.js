@@ -24,6 +24,10 @@ class VoiceTaskApp {
         return this.settings.animationsEnabled !== false;
     }
 
+    get gmailAutoscan() {
+        return this.settings.gmailAutoscan === true;
+    }
+
     // Fast minimal AI classifier - runs instantly
     classifyTask(text) {
         const t = text.toLowerCase();
@@ -377,6 +381,11 @@ Format Rules:
 
         // Instant sync heartbeat (every 10 seconds for background safety)
         setInterval(() => this.syncToCloud(), 10000);
+
+        // Gmail auto-scan on startup
+        if (this.gmailAutoscan) {
+            setTimeout(() => this.scanGmailForBills(), 2000); // Wait for things to settle
+        }
     }
 
     initializeElements() {
@@ -401,10 +410,25 @@ Format Rules:
         this.calendarGrid = document.getElementById('calendarGrid');
         this.calendarHeader = document.getElementById('calendarHeader');
 
+        // Gmail Integration Elements
+        this.connectGmailBtn = document.getElementById('connectGmailBtn');
+        this.scanGmailBtn = document.getElementById('scanGmailBtn');
+        this.gmailStatus = document.getElementById('gmailStatus');
+        this.toggleGmailAutoscan = document.getElementById('toggle-gmail-autoscan');
+        this.gmailToken = null;
+
         this.loadSettings();
 
         this.micButton.addEventListener('click', () => this.toggleRecording());
         this.forceSyncBtn.addEventListener('click', () => this.syncToCloud(true));
+
+        // Gmail Listeners
+        if (this.connectGmailBtn) {
+            this.connectGmailBtn.addEventListener('click', () => this.handleGmailAuth());
+        }
+        if (this.scanGmailBtn) {
+            this.scanGmailBtn.addEventListener('click', () => this.scanGmailForBills());
+        }
         if (this.openSettingsBtn) {
             this.openSettingsBtn.addEventListener('click', () => this.toggleSettings(true));
         }
@@ -1055,6 +1079,7 @@ Format Rules:
         const aiTtsEnabled = document.getElementById('toggle-ai-tts')?.classList.contains('active') ?? true;
         const soundsEnabled = document.getElementById('toggle-sounds')?.classList.contains('active') ?? true;
         const animationsEnabled = document.getElementById('toggle-animations')?.classList.contains('active') ?? true;
+        const gmailAutoscan = document.getElementById('toggle-gmail-autoscan')?.classList.contains('active') ?? false;
 
         localStorage.setItem('doneSettings', JSON.stringify({
             syncUrl: url,
@@ -1063,7 +1088,8 @@ Format Rules:
             groqApiKey: groqKey,
             aiTtsEnabled: aiTtsEnabled,
             soundsEnabled: soundsEnabled,
-            animationsEnabled: animationsEnabled
+            animationsEnabled: animationsEnabled,
+            gmailAutoscan: gmailAutoscan
         }));
 
         this.updateSyncStatus();
@@ -1115,6 +1141,12 @@ Format Rules:
                 toggleAnimations.classList.add('active');
             }
 
+            // Gmail Autoscan toggle
+            const toggleGmailAutoscan = document.getElementById('toggle-gmail-autoscan');
+            if (toggleGmailAutoscan && settings.gmailAutoscan) {
+                toggleGmailAutoscan.classList.add('active');
+            }
+
             this.user = settings.user || null;
             if (this.user) this.updateUserUI();
 
@@ -1153,6 +1185,138 @@ Format Rules:
             console.error('Login failed', e);
             this.showToast('Login failed');
         }
+    }
+
+    // --- Gmail Integration Logic ---
+
+    async handleGmailAuth() {
+        if (!window.google) {
+            this.showToast('Google Client not loaded');
+            return;
+        }
+
+        const clientId = document.getElementById('g_id_onload')?.getAttribute('data-client_id');
+        if (!clientId || clientId.includes('YOUR_GOOGLE_CLIENT_ID')) {
+            this.showToast('Please set Google Client ID in index.html');
+            return;
+        }
+
+        const client = google.accounts.oauth2.initTokenClient({
+            client_id: clientId,
+            scope: 'https://www.googleapis.com/auth/gmail.readonly',
+            callback: (response) => {
+                if (response.access_token) {
+                    this.gmailToken = response.access_token;
+                    this.gmailStatus.textContent = 'Gmail Connected';
+                    this.gmailStatus.style.color = '#4ade80';
+                    this.connectGmailBtn.textContent = 'Reconnect';
+                    this.scanGmailBtn.style.display = 'block';
+                    this.showToast('Gmail Connected!');
+                    this.scanGmailForBills(); // Trigger initial scan
+                }
+            },
+        });
+        client.requestAccessToken();
+    }
+
+    async scanGmailForBills() {
+        if (!this.gmailToken) {
+            this.handleGmailAuth();
+            return;
+        }
+
+        this.showToast('Scanning Gmail for bills...', 5000);
+        this.scanGmailBtn.textContent = 'Scanning...';
+        this.scanGmailBtn.disabled = true;
+
+        try {
+            // Search for bills in the last 30 days
+            const query = 'subject:(bill OR invoice OR statement OR due OR payment)';
+            const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=5`, {
+                headers: { 'Authorization': `Bearer ${this.gmailToken}` }
+            });
+
+            const data = await response.json();
+            if (!data.messages) {
+                this.showToast('No new bills found');
+                return;
+            }
+
+            let foundCount = 0;
+            for (const msg of data.messages) {
+                const msgDetail = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}`, {
+                    headers: { 'Authorization': `Bearer ${this.gmailToken}` }
+                });
+                const details = await msgDetail.json();
+                const snippet = details.snippet;
+
+                // Use AI to extract bill info
+                const billInfo = await this.extractBillDetails(snippet);
+                if (billInfo && billInfo.amount) {
+                    this.addBillAsTask(billInfo);
+                    foundCount++;
+                }
+            }
+
+            if (foundCount > 0) {
+                this.showToast(`Found and added ${foundCount} bills!`);
+            } else {
+                this.showToast('Scan complete. No new bills extracted.');
+            }
+
+        } catch (error) {
+            console.error('Gmail Scan Error:', error);
+            this.showToast('Gmail scan failed');
+        } finally {
+            this.scanGmailBtn.textContent = 'Scan for Bills';
+            this.scanGmailBtn.disabled = false;
+        }
+    }
+
+    async extractBillDetails(snippet) {
+        if (!this.GROQ_API_KEY) return null;
+
+        try {
+            const systemPrompt = `Extract bill details from this email snippet. 
+            Return ONLY a valid JSON object with: 
+            { "merchant": "name", "amount": "dollar value", "dueDate": "YYYY-MM-DD or readable date", "isBill": true/false }
+            If it's NOT a bill, set isBill to false. 
+            Snippet: "${snippet}"`;
+
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.GROQ_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: this.GROQ_MODEL,
+                    messages: [{ role: 'system', content: systemPrompt }],
+                    temperature: 0.1, // Low temperature for accuracy
+                    max_tokens: 150
+                })
+            });
+
+            if (!response.ok) return null;
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content;
+            return JSON.parse(content.replace(/```json|```/g, '').trim());
+        } catch (e) {
+            console.error('Bill Extraction Error:', e);
+            return null;
+        }
+    }
+
+    addBillAsTask(billInfo) {
+        if (!billInfo || !billInfo.isBill) return;
+
+        // Check if this bill was already added (prevent duplicates)
+        const billKey = `[Bill] ${billInfo.merchant} - ${billInfo.amount}`;
+        const exists = this.tasks.some(t => t.text.includes(billKey));
+        if (exists) return;
+
+        const taskText = `[Bill] ${billInfo.merchant} - ${billInfo.amount} due ${billInfo.dueDate}`;
+        this.addTask(taskText, 'notification');
     }
 
     loadUser() {
