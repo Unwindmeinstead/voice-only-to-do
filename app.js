@@ -413,6 +413,15 @@ Format Rules:
         this.renderTasks();
         this.initializePWA();
 
+        // Global click listener to close dropdowns and reset z-index (Click Outside)
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.label-dropdown').forEach(d => {
+                d.style.display = 'none';
+                const card = d.closest('.task-card');
+                if (card) card.style.zIndex = '';
+            });
+        });
+
         // Expose instance for global callbacks (like Google Auth)
         window.app = this;
 
@@ -1806,9 +1815,20 @@ JSON format:
             typeBadge.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const dropdown = typeBadge.querySelector('.type-dropdown');
-                // Close all other dropdowns first
-                document.querySelectorAll('.label-dropdown').forEach(d => { if (d !== dropdown) d.style.display = 'none'; });
-                dropdown.style.display = dropdown.style.display === 'none' ? 'flex' : 'none';
+                const card = div.closest('.task-card');
+
+                // Close all other dropdowns & reset z-index
+                document.querySelectorAll('.label-dropdown').forEach(d => {
+                    if (d !== dropdown) {
+                        d.style.display = 'none';
+                        const p = d.closest('.task-card');
+                        if (p) p.style.zIndex = '';
+                    }
+                });
+
+                const isOpen = dropdown.style.display === 'flex';
+                dropdown.style.display = isOpen ? 'none' : 'flex';
+                if (card) card.style.zIndex = isOpen ? '' : '100';
             });
         }
 
@@ -1818,8 +1838,20 @@ JSON format:
             catLabel.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const dropdown = div.querySelector('.category-dropdown');
-                document.querySelectorAll('.label-dropdown').forEach(d => { if (d !== dropdown) d.style.display = 'none'; });
-                dropdown.style.display = dropdown.style.display === 'none' ? 'flex' : 'none';
+                const card = div.closest('.task-card');
+
+                // Close all other dropdowns & reset z-index
+                document.querySelectorAll('.label-dropdown').forEach(d => {
+                    if (d !== dropdown) {
+                        d.style.display = 'none';
+                        const p = d.closest('.task-card');
+                        if (p) p.style.zIndex = '';
+                    }
+                });
+
+                const isOpen = dropdown.style.display === 'flex';
+                dropdown.style.display = isOpen ? 'none' : 'flex';
+                if (card) card.style.zIndex = isOpen ? '' : '100';
             });
         }
 
