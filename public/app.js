@@ -734,7 +734,7 @@ Format Rules:
             label = 'NOTE';
         } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals)/i.test(t)) {
             intent = 'meal';
-            label = 'MEAL';
+            label = 'MEAL LOG';
         } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
             intent = 'event';
             label = 'EVENT';
