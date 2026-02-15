@@ -71,8 +71,8 @@ class VoiceTaskApp {
             /do i have/i,
             /prioritize|priorities/i,
             /^(how|can you|could you|please)/i,
-            /open (meal|food) tracker/i,
-            /show (me )?(my )?(meals|food|calories)/i
+            /open (meal|food|calorie) tracker/i,
+            /show (me )?(my )?(meals|food|calories|calorie tracker)/i
         ];
 
         // Exclude specific creating commands to avoid false positives
@@ -82,10 +82,10 @@ class VoiceTaskApp {
 
         if (isAIQuery) {
             // Check for navigation commands first
-            if (/open (meal|food) tracker|show (me )?(my )?(meals|food|calories)/i.test(text)) {
+            if (/open (meal|food|calorie) tracker|show (me )?(my )?(meals|food|calories|calorie tracker)/i.test(text)) {
                 this.renderMealTracker();
-                this.mealTrackerModal.classList.add('show');
-                this.showToast('Opening Meal Tracker');
+                this.calorieTrackerModal.classList.add('show');
+                this.showToast('Opening Calorie Tracker');
                 return true;
             }
 
@@ -419,15 +419,15 @@ Format Rules:
         this.intentIndicator = document.getElementById('intentIndicator');
         this.intentText = document.getElementById('intentText');
 
-        // Meal Tracker elements
-        this.mealTrackerModal = document.getElementById('mealTrackerModal');
-        this.closeMealTracker = document.getElementById('closeMealTracker');
-        this.mealList = document.getElementById('mealList');
+        // Calorie Tracker elements
+        this.calorieTrackerModal = document.getElementById('calorieTrackerModal');
+        this.closeCalorieTracker = document.getElementById('closeCalorieTracker');
+        this.calorieList = document.getElementById('calorieList');
         this.totalCaloriesEl = document.getElementById('totalCalories');
 
-        if (this.closeMealTracker) {
-            this.closeMealTracker.addEventListener('click', () => {
-                this.mealTrackerModal.classList.remove('show');
+        if (this.closeCalorieTracker) {
+            this.closeCalorieTracker.addEventListener('click', () => {
+                this.calorieTrackerModal.classList.remove('show');
             });
         }
 
@@ -764,7 +764,7 @@ Format Rules:
             } else if (t.startsWith('note')) {
                 intent = 'note';
                 label = 'NOTE';
-            } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals)/i.test(t)) {
+            } else if (/(?:ate|had|lunch|dinner|breakfast|snack|calories|cals|calorie tracker)/i.test(t)) {
                 intent = 'meal';
                 label = 'MEAL LOG';
             } else if (/^(event|calendar|meet|appoin|sched)/i.test(t) || t.includes('meeting')) {
@@ -1755,7 +1755,7 @@ Format Rules:
     }
 
     renderMealTracker() {
-        if (!this.mealList || !this.totalCaloriesEl) return;
+        if (!this.calorieList || !this.totalCaloriesEl) return;
 
         const today = new Date().toISOString().split('T')[0];
         const todaysMeals = this.meals.filter(m => m.timestamp.startsWith(today));
@@ -1764,11 +1764,11 @@ Format Rules:
         this.totalCaloriesEl.textContent = totalCals;
 
         if (todaysMeals.length === 0) {
-            this.mealList.innerHTML = '<div class="meal-tracker-empty">No meals logged today.</div>';
+            this.calorieList.innerHTML = '<div class="meal-tracker-empty">No meals logged today.</div>';
             return;
         }
 
-        this.mealList.innerHTML = todaysMeals.map(m => `
+        this.calorieList.innerHTML = todaysMeals.map(m => `
             <div class="meal-card">
                 <div class="meal-info">
                     <div class="meal-name">${this.escapeHtml(m.food)}</div>
