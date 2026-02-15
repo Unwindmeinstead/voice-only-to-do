@@ -832,6 +832,54 @@ Format Rules:
         }
     }
 
+    async confirmIntentWithAI(text) {
+        if (!this.GROQ_API_KEY) return null;
+
+        try {
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.GROQ_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'llama3-70b-8192', // More powerful model for final classification
+                    messages: [
+                        {
+                            role: 'system', content: `Determine the intent and extract details for this voice transcript.
+                        Intent categories:
+                        - MEAL: Logging food, calories, drinks, or eating.
+                        - NOTE: Saving a thought, idea, or raw information (NOT a task to do).
+                        - REMINDER: Setting a notification or alert for a specific time/relative time.
+                        - EVENT: Scheduling an appointment, meeting, or time-locked activity.
+                        - AI: Asking a question, navigating, or requesting a summary.
+                        - TASK: To-do items, actions, or work (DEFAULT).
+
+                        Return JSON: {
+                            "intent": "MEAL|NOTE|REMINDER|EVENT|AI|TASK",
+                            "confidence": 0-1,
+                            "food": "food name (only for MEAL)",
+                            "calories": 0 (only if explicitly mentioned for MEAL),
+                            "mealType": "breakfast|lunch|dinner|snack (only for MEAL)",
+                            "cleanText": "cleaned up content for the item",
+                            "navigation": "CALENDAR|TRACKER|SETTINGS|null"
+                        }` },
+                        { role: 'user', content: text }
+                    ],
+                    max_tokens: 150,
+                    temperature: 0.1,
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!response.ok) return null;
+            const data = await response.json();
+            return JSON.parse(data.choices?.[0]?.message?.content || '{}');
+        } catch (error) {
+            console.error('Final Intent AI Error:', error);
+            return null;
+        }
+    }
     toggleRecording() {
         if (this.isRecording) {
             this.stopRecording();
@@ -965,60 +1013,80 @@ Format Rules:
             this.audioContext.resume();
         }
 
-        // Meal logging detection
-        if (this.detectMealIntent(text)) {
-            return;
-        }
-
-        // Handle Edit/Re-dictation if active
-        if (this.editingTaskId) {
-            const id = this.editingTaskId;
-            this.editingTaskId = null;
-            this.updateTaskText(id, transcript);
-            return;
-        }
-
-        // Common commands
+        // 1. Immediate local checks for common navigation/settings
         if (text.includes('settings') || text.includes('config')) {
             this.toggleSettings(true);
             return;
         }
 
-        // Check for AI queries — if AI handles it, don't add as task
+        // 2. High-Fidelity Background AI Refinement
+        this.showToast('Analyzing intent...', 1000);
+        const refined = await this.confirmIntentWithAI(transcript);
+
+        if (refined) {
+            const { intent, food, calories, mealType, cleanText, navigation } = refined;
+
+            // Handle Navigation
+            if (intent === 'AI' && navigation) {
+                if (navigation === 'CALENDAR') {
+                    this.renderCalendar();
+                    this.calendarModal.classList.add('show');
+                    this.showToast('Opening Calendar');
+                    return;
+                }
+                if (navigation === 'TRACKER') {
+                    this.renderMealTracker();
+                    this.calorieTrackerModal.classList.add('show');
+                    this.showToast('Opening Calorie Tracker');
+                    return;
+                }
+                if (navigation === 'SETTINGS') {
+                    this.toggleSettings(true);
+                    return;
+                }
+            }
+
+            // Handle Meal Logging
+            if (intent === 'MEAL') {
+                const finalFood = food || cleanText;
+                const finalCals = calories || 0;
+                const finalType = mealType || 'snack';
+                this.addMealLog(finalFood, finalCals, finalType, transcript);
+                return;
+            }
+
+            // Handle Note
+            if (intent === 'NOTE') {
+                this.addNote(cleanText || transcript);
+                return;
+            }
+
+            // Handle Reminder/Event
+            if (intent === 'REMINDER' || intent === 'EVENT') {
+                this.addTask(cleanText || transcript, intent === 'REMINDER' ? 'notification' : 'event');
+                return;
+            }
+
+            // Fallback for AI queries
+            if (intent === 'AI') {
+                const handledByAI = await this.processWithAI(text);
+                if (handledByAI) return;
+            }
+
+            // If AI says it's a task, add as task
+            if (intent === 'TASK') {
+                this.addTask(cleanText || transcript, 'task');
+                return;
+            }
+        }
+
+        // 3. Fallback to local logic if AI fails
+        if (this.detectMealIntent(text)) return;
+
         const handledByAI = await this.processWithAI(text);
         if (handledByAI) return;
 
-        // Type Intelligence (Task / Notification / Event / Note)
-        let type = 'task';
-        let finalContent = transcript;
-
-        // Date/Time keywords with word boundaries to avoid partial matches
-        const dateKeywords = ['today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'morning', 'afternoon', 'evening', 'night', 'tonight', 'pm', 'am'];
-
-        const hasDateKeyword = dateKeywords.some(kw => new RegExp(`\\b${kw}\\b`, 'i').test(text));
-        const hasTimePattern = /\b(at|around|by)\s+\d{1,2}(:\d{2})?\b/i.test(text);
-        const hasNumericalDate = /\b\d{1,2}(\/|-)\d{1,2}\b/.test(text);
-
-        if (text.startsWith('remind me') || text.startsWith('notification') || text.startsWith('alert') || text.startsWith('remember')) {
-            type = 'notification';
-            finalContent = transcript.replace(/remind me|notification|alert|remember/i, '').trim();
-        } else if (/^(event|calendar|meeting|appointment|schedule)/i.test(text) || text.includes('meeting')) {
-            type = 'event';
-            finalContent = transcript.replace(/^(add|create|schedule|book|new|make)\s+(a|an)?\s*/i, '')
-                .replace(/\s+for\s+/i, ' ')
-                .trim();
-        } else if (hasDateKeyword || hasTimePattern || hasNumericalDate) {
-            type = 'event';
-        }
-
-        if (text.startsWith('note')) {
-            type = 'note';
-            finalContent = transcript.replace(/note/i, '').trim();
-        }
-
-        if (finalContent.length > 0) {
-            this.addTask(finalContent, type);
-        }
+        this.addTask(transcript, 'task');
     }
 
     parseDateFromText(text) {
