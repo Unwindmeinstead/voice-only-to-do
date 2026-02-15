@@ -36,12 +36,17 @@ class VoiceTaskApp {
         if (urgentWords.some(w => t.includes(w))) priority = 'high';
         else if (lowPriorityWords.some(w => t.includes(w))) priority = 'low';
 
-        // Category detection
+        // Category detection — ordered by specificity (most specific first)
         let category = 'personal';
         const categories = {
-            work: ['meeting', 'call', 'email', 'project', 'deadline', 'report', 'client', 'presentation', 'zoom', 'teams', 'conference', 'board', 'boss', 'colleague', 'office', 'job', 'task for work', 'workout', 'huddle', 'standup', 'sync', 'proposal', 'invoice', 'budget', 'review'],
-            health: ['exercise', 'gym', 'run', 'workout', 'doctor', 'medicine', 'pill', 'appointment', 'health', 'yoga', 'walk', 'jog', 'stretch', 'therapy', 'checkup', 'dentist', 'meds', 'sleep', 'rest'],
-            shopping: ['grocery', 'shop', 'buy', 'store', 'amazon', 'order', 'pick up', 'supermarket', 'food', 'milk', 'bread', 'eggs', 'vegetables', 'fruit', 'meat', 'snacks', 'drinks', 'water', 'coffee'],
+            meeting: ['meeting', 'huddle', 'standup', 'stand-up', 'sync', '1-on-1', 'one on one', 'conference call', 'board meeting', 'team meeting', 'scrum', 'retro', 'kickoff', 'all-hands', 'town hall', 'catch up', 'catch-up'],
+            finance: ['invoice', 'budget', 'payment', 'pay', 'bill', 'rent', 'tax', 'taxes', 'transfer', 'deposit', 'bank', 'loan', 'insurance', 'invest', 'salary', 'refund', 'expense'],
+            health: ['exercise', 'gym', 'run', 'workout', 'doctor', 'medicine', 'pill', 'appointment', 'health', 'yoga', 'walk', 'jog', 'stretch', 'therapy', 'checkup', 'dentist', 'meds', 'sleep', 'rest', 'physical', 'flu', 'vaccine', 'prescription'],
+            shopping: ['grocery', 'groceries', 'shop', 'buy', 'store', 'amazon', 'order', 'supermarket', 'target', 'walmart', 'costco', 'online order', 'package', 'delivery', 'pick up groceries'],
+            food: ['breakfast', 'lunch', 'dinner', 'snack', 'eat', 'ate', 'meal', 'cook', 'recipe', 'restaurant', 'takeout', 'pizza', 'burger', 'salad', 'coffee', 'tea', 'water', 'juice', 'smoothie'],
+            social: ['birthday', 'party', 'hangout', 'hang out', 'dinner with', 'lunch with', 'drinks with', 'date', 'wedding', 'anniversary', 'reunion', 'visit', 'friends', 'family event', 'get together', 'potluck', 'bbq'],
+            errand: ['dry clean', 'laundry', 'car wash', 'oil change', 'mechanic', 'post office', 'library', 'return', 'drop off', 'pick up', 'fix', 'repair', 'maintenance', 'clean', 'organize', 'sort', 'recycle'],
+            work: ['email', 'project', 'deadline', 'report', 'client', 'presentation', 'zoom', 'teams', 'board', 'boss', 'colleague', 'office', 'job', 'proposal', 'review', 'submit', 'deploy', 'code', 'design', 'sprint', 'release'],
             urgent: ['urgent', 'asap', 'emergency', 'critical', 'immediately', 'now']
         };
 
@@ -173,12 +178,23 @@ class VoiceTaskApp {
     }
 
     formatAIResponse(text) {
-        const lines = text.split(/\n/).map(l => l.trim()).filter(l => l.length > 0);
+        // Pre-process: strip markdown formatting
+        let cleaned = text
+            .replace(/\*\*\*(.+?)\*\*\*/g, '$1')     // ***bold italic*** → plain
+            .replace(/\*\*(.+?)\*\*/g, '$1')          // **bold** → plain
+            .replace(/\*(.+?)\*/g, '$1')              // *italic* → plain
+            .replace(/^#{1,4}\s+/gm, '')              // ## headers → plain text
+            .replace(/^---+$/gm, '')                   // --- horizontal rules
+            .replace(/`([^`]+)`/g, '$1')              // `code` → plain
+            .trim();
+
+        const lines = cleaned.split(/\n/).map(l => l.trim()).filter(l => l.length > 0);
         let html = '';
         let listStarted = false;
+        let headerDone = false;
 
         lines.forEach((line, index) => {
-            const isListItem = /^(\d+[.)]|[-•*])/.test(line);
+            const isListItem = /^(\d+[.)]|[-•])\s/.test(line);
 
             if (isListItem) {
                 if (!listStarted) {
@@ -186,20 +202,20 @@ class VoiceTaskApp {
                     listStarted = true;
                 }
                 // Clean up list markers and potentially [type] markers
-                let clean = line.replace(/^(\d+[.)]|[-•*])\s*/, '').replace(/^\[[^\]]+\]\s*/, '').trim();
+                let clean = line.replace(/^(\d+[.)]|[-•])\s*/, '').replace(/^\[[^\]]+\]\s*/, '').trim();
                 if (!clean) return;
 
                 const matchingTask = this.tasks.find(t => t.text.toLowerCase().includes(clean.toLowerCase()) || clean.toLowerCase().includes(t.text.toLowerCase()));
                 const type = matchingTask ? matchingTask.type : 'task';
                 const isCompleted = matchingTask ? matchingTask.completed : false;
 
-                const checkedClass = isCompleted ? 'checked' : '';
                 const completedClass = isCompleted ? 'completed' : '';
 
                 // Minimal SVG mapping
                 const iconMap = {
                     notification: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>',
                     event: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>',
+                    meeting: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
                     task: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>'
                 };
 
@@ -214,8 +230,9 @@ class VoiceTaskApp {
                 }
 
                 // First non-list line is the header
-                if (index === 0) {
+                if (!headerDone) {
                     html += `<p class="ai-response-header">${this.escapeHtml(line)}</p>`;
+                    headerDone = true;
                 } else {
                     html += `<p class="ai-panel-text">${this.escapeHtml(line)}</p>`;
                 }
@@ -248,13 +265,14 @@ Current ACTIVE tasks (${totalCount - completedCount} active):
 ${taskList || 'NO ACTIVE TASKS.'}
 
 Format Rules:
-1. Start with a short, punchy headline.
-2. Follow with a list of tasks using "-" bullets.
-3. DO NOT include type markers (like [event]) in the final response.
-4. End with a very brief takeaway.
-5. If there are NO ACTIVE TASKS, strictly say "You have a clear plate" or similar.
-6. CRITICAL: DO NOT hallucinate. ONLY list tasks provided in the list above. If the user asks for "tomorrow" and nothing is scheduled, say "Nothing for tomorrow".
-7. Keep it under 100 words.`;
+1. Start with a short, punchy headline (NO markdown, NO hashtags, NO asterisks).
+2. Follow with a list of items using "-" bullet points only.
+3. DO NOT use any markdown formatting. No **, no *, no ##, no backticks.
+4. DO NOT include type markers (like [event]) in the final response.
+5. End with a very brief one-line takeaway.
+6. If there are NO ACTIVE TASKS, strictly say "You have a clear plate" or similar.
+7. CRITICAL: DO NOT hallucinate. ONLY list tasks provided above. If the user asks for "tomorrow" and nothing is scheduled, say "Nothing for tomorrow".
+8. Keep it under 100 words. Use PLAIN TEXT only.`;
 
             const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
@@ -486,6 +504,11 @@ Format Rules:
         }
 
         this.loadSettings();
+
+        // Close label dropdowns when clicking outside
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.label-dropdown').forEach(d => d.style.display = 'none');
+        });
 
         this.micButton.addEventListener('click', () => this.toggleRecording());
         this.forceSyncBtn.addEventListener('click', () => this.syncToCloud(true));
@@ -873,33 +896,44 @@ Format Rules:
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: 'llama3-70b-8192', // More powerful model for final classification
+                    model: 'llama3-70b-8192',
                     messages: [
                         {
-                            role: 'system', content: `Determine the intent and extract details for this voice transcript.
-                        Intent categories:
-                        - MEAL: Logging food, calories, drinks, or eating.
-                        - NOTE: Saving a thought, idea, or raw information (NOT a task to do).
-                        - REMINDER: Setting a notification or alert for a specific time/relative time.
-                        - EVENT: Scheduling an appointment, meeting, or time-locked activity.
-                        - AI: Asking a question, navigating, or requesting a summary. 
-                          Includes "take me to", "go to", "open", "show", "view", "access" for Calendar, Tracker, Settings, or Notes.
-                        - TASK: To-do items, actions, or work (DEFAULT).
+                            role: 'system', content: `You classify voice transcripts for a productivity app. Return JSON only.
 
-                        Return JSON: {
-                            "intent": "MEAL|NOTE|REMINDER|EVENT|AI|TASK",
-                            "confidence": 0-1,
-                            "food": "food name (only for MEAL)",
-                            "calories": 0 (only if explicitly mentioned for MEAL),
-                            "mealType": "breakfast|lunch|dinner|snack (only for MEAL)",
-                            "cleanText": "cleaned up content for the item",
-                            "navigation": "CALENDAR|TRACKER|SETTINGS|NOTES|null"
-                        }`
+INTENTS:
+- NAVIGATE: User wants to open a page. "open my calendar", "show notes", "go to settings", "open calorie tracker", "show me my meals". Set navigation field.
+- MEAL: Logging food/drink. "I had a burger", "ate pizza for lunch"
+- NOTE: Saving info, NOT a to-do. "note the gate code is 4521"
+- REMINDER: Time-based alert. "remind me to call mom at 3"
+- MEETING: Meeting/sync/huddle/standup/1-on-1. "meeting with John at 3pm", "team standup"
+- EVENT: Scheduled non-meeting activity. "dentist Friday", "concert Saturday"
+- AI: Asking a question or requesting a summary. "what's on my plate", "summarize my tasks"
+- TASK: To-do action (DEFAULT). "buy groceries", "finish report"
+
+NAVIGATION VALUES (only for NAVIGATE intent):
+- CALENDAR: calendar, schedule, agenda
+- TRACKER: calories, calorie tracker, meals, food tracker, meal tracker
+- SETTINGS: settings, preferences, config
+- NOTES: notes, my notes
+
+LABELS:
+meeting, reminder, event, errand, finance, health, shopping, social, work, food, personal
+
+RULES:
+1. "open/show/go to/take me to/view/access" + page name = NAVIGATE. Always.
+2. "meeting/sync/huddle/standup" = MEETING intent, label "meeting". Never TASK.
+3. "remind me" = REMINDER intent, label "reminder". Never TASK.
+4. "call mom" = TASK, label "personal". NOT a meeting.
+5. "lunch with Sarah" = EVENT, label "social". NOT a meal.
+
+JSON format:
+{"intent":"NAVIGATE|MEAL|NOTE|REMINDER|MEETING|EVENT|AI|TASK","label":"...","confidence":0.0-1.0,"food":"only for MEAL","calories":0,"mealType":"breakfast|lunch|dinner|snack","cleanText":"cleaned text","navigation":"CALENDAR|TRACKER|SETTINGS|NOTES|null"}`
                         },
                         { role: 'user', content: text }
                     ],
-                    max_tokens: 150,
-                    temperature: 0.1,
+                    max_tokens: 200,
+                    temperature: 0.05,
                     response_format: { type: "json_object" }
                 })
             });
@@ -1045,9 +1079,31 @@ Format Rules:
             this.audioContext.resume();
         }
 
-        // 1. Immediate local checks for common navigation/settings
-        if (/(settings|config|preferences|go to settings|take me to settings)/i.test(text)) {
+        // 1. INSTANT LOCAL NAVIGATION — zero AI dependency, fires immediately
+        // Settings
+        if (/\b(settings|config|preferences)\b/i.test(text) && /(open|go|take|show|view|access|settings)/i.test(text)) {
             this.toggleSettings(true);
+            return;
+        }
+        // Calendar
+        if (/\b(calendar|schedule|agenda)\b/i.test(text) && /(open|go|take|show|view|access|my)/i.test(text)) {
+            this.renderCalendar();
+            this.calendarModal.classList.add('show');
+            this.showAIActivity(1500);
+            return;
+        }
+        // Notes
+        if (/\b(notes?|my notes)\b/i.test(text) && /(open|go|take|show|view|access|my)/i.test(text)) {
+            this.renderNotes();
+            this.notesModal.classList.add('show');
+            this.showAIActivity(1500);
+            return;
+        }
+        // Calorie/Meal Tracker
+        if (/\b(calorie|calories|tracker|meal tracker|food tracker|meals)\b/i.test(text) && /(open|go|take|show|view|access|my)/i.test(text)) {
+            this.renderMealTracker();
+            this.calorieTrackerModal.classList.add('show');
+            this.showAIActivity(1500);
             return;
         }
 
@@ -1055,11 +1111,36 @@ Format Rules:
         this.showAIActivity(1500);
         const refined = await this.confirmIntentWithAI(transcript);
 
-        if (refined) {
-            const { intent, food, calories, mealType, cleanText, navigation } = refined;
+        // 2.5 LOCAL KEYWORD SAFETY NET — overrides AI if it clearly got it wrong
+        const lowerText = text.toLowerCase();
+        let finalIntent = refined?.intent || null;
+        let finalLabel = refined?.label || null;
+        let finalCleanText = refined?.cleanText || transcript;
 
-            // Handle Navigation
-            if (intent === 'AI' && navigation) {
+        // Force REMINDER if text clearly says "remind me" / "reminder" / "don't forget"
+        if (/\b(remind me|reminder|don't forget|do not forget|set a reminder)\b/i.test(lowerText)) {
+            finalIntent = 'REMINDER';
+            finalLabel = 'reminder';
+        }
+        // Force MEETING if text clearly says "meeting" / "sync" / "huddle" / "standup"
+        if (/\b(meeting|sync|huddle|standup|stand-up|1-on-1|one on one|all-hands|town hall)\b/i.test(lowerText) && !/\b(open|show|go to|view)\b/i.test(lowerText)) {
+            finalIntent = 'MEETING';
+            finalLabel = 'meeting';
+        }
+        // Force EVENT if text clearly says "appointment" / "scheduled" / "reservation"
+        if (/\b(appointment|reservation|booked|scheduled for)\b/i.test(lowerText)) {
+            finalIntent = 'EVENT';
+            finalLabel = 'event';
+        }
+
+        if (refined || finalIntent) {
+            const food = refined?.food;
+            const calories = refined?.calories;
+            const mealType = refined?.mealType;
+            const navigation = refined?.navigation;
+
+            // Handle Navigation — fires for ANY intent that has a navigation value
+            if (navigation && navigation !== 'null' && navigation !== null) {
                 if (navigation === 'CALENDAR') {
                     this.renderCalendar();
                     this.calendarModal.classList.add('show');
@@ -1085,8 +1166,8 @@ Format Rules:
             }
 
             // Handle Meal Logging
-            if (intent === 'MEAL') {
-                const finalFood = food || cleanText;
+            if (finalIntent === 'MEAL') {
+                const finalFood = food || finalCleanText;
                 const finalCals = calories || 0;
                 const finalType = mealType || 'snack';
                 this.addMealLog(finalFood, finalCals, finalType, transcript);
@@ -1094,32 +1175,54 @@ Format Rules:
             }
 
             // Handle Note
-            if (intent === 'NOTE') {
-                this.addNote(cleanText || transcript);
+            if (finalIntent === 'NOTE') {
+                this.addNote(finalCleanText || transcript);
                 return;
             }
 
-            // Handle Reminder/Event
-            if (intent === 'REMINDER' || intent === 'EVENT') {
-                this.addTask(cleanText || transcript, intent === 'REMINDER' ? 'notification' : 'event');
+            // Handle Meeting
+            if (finalIntent === 'MEETING') {
+                this.addTask(finalCleanText || transcript, 'meeting', null, finalLabel || 'meeting');
+                return;
+            }
+
+            // Handle Reminder
+            if (finalIntent === 'REMINDER') {
+                this.addTask(finalCleanText || transcript, 'notification', null, finalLabel || 'reminder');
+                return;
+            }
+
+            // Handle Event
+            if (finalIntent === 'EVENT') {
+                this.addTask(finalCleanText || transcript, 'event', null, finalLabel || 'event');
                 return;
             }
 
             // Fallback for AI queries
-            if (intent === 'AI') {
+            if (finalIntent === 'AI' || finalIntent === 'NAVIGATE') {
                 const handledByAI = await this.processWithAI(text);
                 if (handledByAI) return;
             }
 
-            // If AI says it's a task, add as task
-            if (intent === 'TASK') {
-                this.addTask(cleanText || transcript, 'task');
+            // If AI says it's a task, add as task with AI label
+            if (finalIntent === 'TASK') {
+                this.addTask(finalCleanText || transcript, 'task', null, finalLabel || null);
                 return;
             }
         }
 
-        // 3. Fallback to local logic if AI fails
+        // 3. Fallback to local logic if AI fails entirely
         if (this.detectMealIntent(text)) return;
+
+        // Local keyword-based type detection as last resort
+        if (/\b(remind me|reminder|don't forget)\b/i.test(lowerText)) {
+            this.addTask(transcript, 'notification', null, 'reminder');
+            return;
+        }
+        if (/\b(meeting|sync|huddle|standup)\b/i.test(lowerText)) {
+            this.addTask(transcript, 'meeting', null, 'meeting');
+            return;
+        }
 
         const handledByAI = await this.processWithAI(text);
         if (handledByAI) return;
@@ -1193,18 +1296,18 @@ Format Rules:
         return targetDate ? targetDate.toISOString() : null;
     }
 
-    addTask(text, type = 'task', specificDate = null) {
-        // AI classification
+    addTask(text, type = 'task', specificDate = null, aiLabel = null) {
+        // AI classification (local fallback)
         const { category, priority } = this.classifyTask(text);
 
         const task = {
             id: Date.now(),
             text: text,
             type: type,
-            category: category,
+            category: aiLabel || category,  // AI label overrides local classifier when available
             priority: priority,
             completed: false,
-            createdAt: specificDate || new Date().toISOString() // Use parsed date if available
+            createdAt: specificDate || new Date().toISOString()
         };
 
         this.tasks.unshift(task);
@@ -1212,6 +1315,22 @@ Format Rules:
         this.saveTasks();
         this.renderTasks();
         this.triggerSuccessAnimation();
+    }
+
+    updateTaskType(taskId, newType) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        task.type = newType;
+        this.saveTasks();
+        this.renderTasks();
+    }
+
+    updateTaskCategory(taskId, newCategory) {
+        const task = this.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        task.category = newCategory;
+        this.saveTasks();
+        this.renderTasks();
     }
 
     triggerSuccessAnimation() {
@@ -1528,10 +1647,24 @@ Format Rules:
                 groups[groupName].push(task);
             });
 
-            // Priority order for groups
-            const groupOrder = ['urgent', 'work', 'health', 'shopping', 'personal'];
+            // Priority order for groups — MUST include all possible categories
+            const groupOrder = ['urgent', 'meeting', 'work', 'health', 'finance', 'shopping', 'social', 'errand', 'food', 'reminder', 'event', 'personal'];
+            const renderedGroups = new Set();
             groupOrder.forEach(gn => {
                 if (groups[gn] && groups[gn].length > 0) {
+                    renderedGroups.add(gn);
+                    const sectionLabel = document.createElement('div');
+                    sectionLabel.className = 'section-label';
+                    sectionLabel.textContent = gn;
+                    this.taskList.appendChild(sectionLabel);
+                    groups[gn].forEach(task => {
+                        this.taskList.appendChild(this.createTaskHTML(task));
+                    });
+                }
+            });
+            // Catch-all: render any groups not in groupOrder so nothing is silently dropped
+            Object.keys(groups).forEach(gn => {
+                if (!renderedGroups.has(gn) && groups[gn].length > 0) {
                     const sectionLabel = document.createElement('div');
                     sectionLabel.className = 'section-label';
                     sectionLabel.textContent = gn;
@@ -1572,27 +1705,54 @@ Format Rules:
         };
 
         const categoryIcons = {
+            meeting: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
             work: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>',
             health: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>',
             shopping: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>',
+            finance: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+            social: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>',
+            errand: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>',
+            food: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path></svg>',
             urgent: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+            reminder: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>',
+            event: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line></svg>',
             personal: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
         };
 
-        let icon = '';
-        if (type === 'notification') {
-            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg> NOTIFICATION`;
-        } else if (type === 'event') {
-            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> EVENT`;
-        } else if (type === 'note') {
-            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> NOTE`;
-        } else if (type === 'meal') {
-            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg> MEAL`;
-        } else {
-            icon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> TASK`;
-        }
+        // Type badge mapping
+        const typeLabels = {
+            'notification': 'REMINDER',
+            'meeting': 'MEETING',
+            'event': 'EVENT',
+            'note': 'NOTE',
+            'meal': 'MEAL',
+            'task': 'TASK'
+        };
+
+        const typeIcons = {
+            notification: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>',
+            meeting: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+            event: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>',
+            note: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
+            meal: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path></svg>',
+            task: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+        };
+
+        const icon = `${typeIcons[type] || typeIcons.task} ${typeLabels[type] || 'TASK'}`;
 
         const showCheckbox = type !== 'note' && type !== 'meal';
+
+        // Available types and categories for editing
+        const allTypes = ['task', 'meeting', 'event', 'notification', 'note'];
+        const allCategories = ['personal', 'work', 'meeting', 'health', 'shopping', 'finance', 'social', 'errand', 'food', 'urgent', 'reminder', 'event'];
+
+        const typeOptions = allTypes.map(t =>
+            `<div class="label-option ${t === type ? 'active' : ''}" data-type="${t}" data-task-id="${task.id}">${(typeLabels[t] || t).charAt(0) + (typeLabels[t] || t).slice(1).toLowerCase()}</div>`
+        ).join('');
+
+        const catOptions = allCategories.map(c =>
+            `<div class="label-option ${c === category ? 'active' : ''}" data-cat="${c}" data-task-id="${task.id}">${c.charAt(0).toUpperCase() + c.slice(1)}</div>`
+        ).join('');
 
         div.innerHTML = `
             <article class="task-card ${type} ${task.completed ? 'completed' : ''} ${isEditing ? 'editing' : ''}" data-id="${task.id}">
@@ -1605,12 +1765,14 @@ Format Rules:
                     aria-label="Mark task as ${task.completed ? 'active' : 'completed'}"
                 />` : ''}
                 <div class="task-main">
-                    <div class="task-labels" style="display: flex; gap: 6px; align-items: center; margin-bottom: 4px;">
-                        <span class="ai-label">${categoryIcons[category] || categoryIcons.personal}</span>
+                    <div class="task-labels" style="display: flex; gap: 6px; align-items: center; margin-bottom: 4px; position: relative;">
+                        <span class="ai-label category-editable" data-task-id="${task.id}" title="Tap to change category">${categoryIcons[category] || categoryIcons.personal} <span style="font-size:9px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;opacity:0.5;">${category}</span></span>
                         <span class="priority-dot" style="width: 6px; height: 6px; border-radius: 50%; background: ${priorityColors[priority] || priorityColors.medium};"></span>
+                        <div class="label-dropdown category-dropdown" data-for="${task.id}" style="display:none;">${catOptions}</div>
                     </div>
-                    <div class="type-badge">
+                    <div class="type-badge type-editable" data-task-id="${task.id}" title="Tap to change type" style="cursor:pointer;">
                         ${icon}
+                        <div class="label-dropdown type-dropdown" data-for="${task.id}" style="display:none;">${typeOptions}</div>
                     </div>
                     <div class="${task.completed ? 'task-text completed' : 'task-text'}">${this.escapeHtml(task.text)}</div>
                     <div class="task-meta">${this.formatRelativeDate(task.createdAt)}</div>
@@ -1637,6 +1799,49 @@ Format Rules:
         }
         div.querySelector('.task-edit').addEventListener('click', () => this.editTask(task.id));
         div.querySelector('.task-delete').addEventListener('click', () => this.deleteTaskById(task.id));
+
+        // Editable type badge
+        const typeBadge = div.querySelector('.type-editable');
+        if (typeBadge) {
+            typeBadge.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const dropdown = typeBadge.querySelector('.type-dropdown');
+                // Close all other dropdowns first
+                document.querySelectorAll('.label-dropdown').forEach(d => { if (d !== dropdown) d.style.display = 'none'; });
+                dropdown.style.display = dropdown.style.display === 'none' ? 'flex' : 'none';
+            });
+        }
+
+        // Editable category label
+        const catLabel = div.querySelector('.category-editable');
+        if (catLabel) {
+            catLabel.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const dropdown = div.querySelector('.category-dropdown');
+                document.querySelectorAll('.label-dropdown').forEach(d => { if (d !== dropdown) d.style.display = 'none'; });
+                dropdown.style.display = dropdown.style.display === 'none' ? 'flex' : 'none';
+            });
+        }
+
+        // Type dropdown options
+        div.querySelectorAll('.type-dropdown .label-option').forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const newType = opt.dataset.type;
+                const tid = parseInt(opt.dataset.taskId);
+                this.updateTaskType(tid, newType);
+            });
+        });
+
+        // Category dropdown options
+        div.querySelectorAll('.category-dropdown .label-option').forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const newCat = opt.dataset.cat;
+                const tid = parseInt(opt.dataset.taskId);
+                this.updateTaskCategory(tid, newCat);
+            });
+        });
 
         return div.firstElementChild;
     }
