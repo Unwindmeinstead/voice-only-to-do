@@ -71,8 +71,9 @@ class VoiceTaskApp {
             /do i have/i,
             /prioritize|priorities/i,
             /^(how|can you|could you|please)/i,
-            /open (meal|food|calorie) tracker/i,
-            /show (me )?(my )?(meals|food|calories|calorie tracker)/i
+            /(open|go to|take me to|view|access|show) (meal|food|calorie) tracker/i,
+            /(open|go to|take me to|view|access|show) (me )?(my )?(meals|food|calories|calorie tracker)/i,
+            /(open|go to|take me to|view|access|show) (my )?calendar/i
         ];
 
         // Exclude specific creating commands to avoid false positives
@@ -82,14 +83,14 @@ class VoiceTaskApp {
 
         if (isAIQuery) {
             // Check for navigation commands first
-            if (/open (meal|food|calorie) tracker|show (me )?(my )?(meals|food|calories|calorie tracker)/i.test(text)) {
+            if (/(open|go to|take me to|view|access|show).*(meal|food|calorie|tracker|plate|log)/i.test(text)) {
                 this.renderMealTracker();
                 this.calorieTrackerModal.classList.add('show');
                 this.showAIActivity(1500);
                 return true;
             }
 
-            if (/open (my )?calendar|show (my )?calendar|calendar/i.test(text)) {
+            if (/(open|go to|take me to|view|access|show).*(calendar|agenda|schedule)/i.test(text)) {
                 this.renderCalendar();
                 this.calendarModal.classList.add('show');
                 this.showAIActivity(1500);
@@ -854,7 +855,8 @@ Format Rules:
                         - NOTE: Saving a thought, idea, or raw information (NOT a task to do).
                         - REMINDER: Setting a notification or alert for a specific time/relative time.
                         - EVENT: Scheduling an appointment, meeting, or time-locked activity.
-                        - AI: Asking a question, navigating, or requesting a summary.
+                        - AI: Asking a question, navigating, or requesting a summary. 
+                          Includes "take me to", "go to", "open", "show", "view", "access" for Calendar, Tracker, or Settings.
                         - TASK: To-do items, actions, or work (DEFAULT).
 
                         Return JSON: {
@@ -865,7 +867,8 @@ Format Rules:
                             "mealType": "breakfast|lunch|dinner|snack (only for MEAL)",
                             "cleanText": "cleaned up content for the item",
                             "navigation": "CALENDAR|TRACKER|SETTINGS|null"
-                        }` },
+                        }`
+                        },
                         { role: 'user', content: text }
                     ],
                     max_tokens: 150,
@@ -1016,7 +1019,7 @@ Format Rules:
         }
 
         // 1. Immediate local checks for common navigation/settings
-        if (text.includes('settings') || text.includes('config')) {
+        if (/(settings|config|preferences|go to settings|take me to settings)/i.test(text)) {
             this.toggleSettings(true);
             return;
         }
