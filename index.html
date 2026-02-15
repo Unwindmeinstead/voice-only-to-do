@@ -1485,6 +1485,83 @@
             background: rgba(251, 191, 36, 0.1);
         }
 
+        .task-card.meeting .type-badge {
+            color: #a78bfa;
+            background: rgba(167, 139, 250, 0.1);
+        }
+
+        /* Editable Label Dropdowns */
+        .category-editable,
+        .type-editable {
+            cursor: pointer;
+            position: relative;
+        }
+
+        .category-editable {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .category-editable:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .label-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 100;
+            background: rgba(20, 20, 20, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            padding: 6px;
+            display: flex;
+            /* Changed from default to flex/wrap in previous edit, enforcing it here */
+            flex-direction: column;
+            /* Stack vertically for better scrolling */
+            flex-wrap: nowrap;
+            /* Prevent wrapping so scrolling works */
+            gap: 4px;
+            max-width: 200px;
+            /* narrowed slightly */
+            max-height: 200px;
+            /* Limit height */
+            overflow-y: auto;
+            /* Enable vertical scrolling */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+            margin-top: 6px;
+        }
+
+        .label-option {
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .label-option:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .label-option.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+
         .day-task-item {
             cursor: pointer;
         }
@@ -1681,19 +1758,7 @@
                 </div>
             </div>
 
-            <div class="top-center">
-                <div id="openNotes" style="cursor: pointer; opacity: 0.6; transition: opacity 0.2s;"
-                    onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
-                        <line x1="10" y1="9" x2="8" y2="9"></line>
-                    </svg>
-                </div>
-            </div>
+            <!-- Notes icon removed — access via voice command "open notes" -->
 
             <div class="top-right" id="openSettings" style="cursor: pointer; text-align: right;">
                 <div class="task-count" id="taskCount">0</div>
@@ -2070,7 +2135,7 @@
     <div id="notesModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title">Knowledge Base</div>
+                <div class="modal-title">Notes</div>
                 <button id="closeNotes" class="close-modal">Done</button>
             </div>
             <div class="settings-list" style="padding: 20px;">
