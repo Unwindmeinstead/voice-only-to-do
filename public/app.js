@@ -436,6 +436,25 @@ Format Rules:
             });
         }
 
+        // Edit Meal elements
+        this.editMealModal = document.getElementById('editMealModal');
+        this.closeEditMeal = document.getElementById('closeEditMeal');
+        this.saveMealBtn = document.getElementById('saveMealBtn');
+        this.editMealFoodInput = document.getElementById('editMealFood');
+        this.editMealCaloriesInput = document.getElementById('editMealCalories');
+        this.currentlyEditingMealId = null;
+
+        if (this.closeEditMeal) {
+            this.closeEditMeal.addEventListener('click', () => {
+                this.editMealModal.classList.remove('show');
+                this.currentlyEditingMealId = null;
+            });
+        }
+
+        if (this.saveMealBtn) {
+            this.saveMealBtn.addEventListener('click', () => this.saveMealEdit());
+        }
+
         this.loadSettings();
 
         this.micButton.addEventListener('click', () => this.toggleRecording());
@@ -1761,17 +1780,31 @@ Format Rules:
         const meal = this.meals.find(m => m.id == id);
         if (!meal) return;
 
-        const newFood = prompt('Edit meal name:', meal.food);
-        if (newFood === null) return;
+        this.currentlyEditingMealId = id;
+        this.editMealFoodInput.value = meal.food;
+        this.editMealCaloriesInput.value = meal.calories;
+        this.editMealModal.classList.add('show');
+    }
 
-        const newCalories = prompt('Edit calories:', meal.calories);
-        if (newCalories === null) return;
+    saveMealEdit() {
+        if (!this.currentlyEditingMealId) return;
+        const meal = this.meals.find(m => m.id == this.currentlyEditingMealId);
+        if (!meal) return;
 
-        meal.food = newFood.trim();
-        meal.calories = parseInt(newCalories) || 0;
+        const newFood = this.editMealFoodInput.value.trim();
+        const newCalories = parseInt(this.editMealCaloriesInput.value) || 0;
 
+        if (!newFood) {
+            this.showToast('Please enter a food name');
+            return;
+        }
+
+        meal.food = newFood;
+        meal.calories = newCalories;
         localStorage.setItem('doneMeals', JSON.stringify(this.meals));
         this.renderMealTracker();
+        this.editMealModal.classList.remove('show');
+        this.currentlyEditingMealId = null;
         this.showToast('Meal updated');
     }
 

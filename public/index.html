@@ -1477,7 +1477,7 @@
 
 
 
-        /* Meal Tracker Styles */
+        /* Calorie Tracker Styles */
         .meal-card {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.06);
@@ -1487,6 +1487,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .meal-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 159, 10, 0.2);
+            transform: translateY(-2px);
         }
 
         .meal-info {
@@ -1502,8 +1509,8 @@
         }
 
         .meal-meta {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.3);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
@@ -1512,7 +1519,6 @@
             font-size: 18px;
             font-weight: 600;
             color: #ff9f0a;
-            /* Apple Orange */
         }
 
         .meal-calories span {
@@ -1523,12 +1529,14 @@
         }
 
         .meal-summary {
-            background: linear-gradient(135deg, rgba(255, 159, 10, 0.1), rgba(255, 69, 58, 0.1));
-            border-radius: 20px;
-            padding: 24px;
+            background: linear-gradient(135deg, rgba(255, 159, 10, 0.08), rgba(255, 69, 58, 0.08));
+            border-radius: 24px;
+            padding: 28px;
             margin-bottom: 24px;
             text-align: center;
-            border: 1px solid rgba(255, 159, 10, 0.1);
+            border: 1px solid rgba(255, 159, 10, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .summary-value {
@@ -1888,6 +1896,31 @@
                 <div id="calorieList">
                     <!-- Calories injected by JS -->
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Meal Modal -->
+    <div id="editMealModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <div class="modal-title">Edit Meal</div>
+                <button id="closeEditMeal" class="close-modal">Cancel</button>
+            </div>
+            <div class="settings-list" style="padding: 20px;">
+                <div class="settings-group">
+                    <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
+                        <div class="settings-item-label">Food Name</div>
+                        <input type="text" id="editMealFood" class="settings-input" placeholder="e.g. Chicken Salad">
+                    </div>
+                    <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
+                        <div class="settings-item-label">Calories</div>
+                        <input type="number" id="editMealCalories" class="settings-input" placeholder="e.g. 450">
+                    </div>
+                </div>
+                <button id="saveMealBtn" class="action-button"
+                    style="width: 100%; margin-top: 24px; background: #ff9f0a; color: #000; border: none; height: 50px;">Save
+                    Changes</button>
             </div>
         </div>
     </div>
